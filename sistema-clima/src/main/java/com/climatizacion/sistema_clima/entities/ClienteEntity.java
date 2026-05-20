@@ -23,7 +23,7 @@ public class ClienteEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_cliente")
-    private Long idCLiente;
+    private Long idCliente;
 
     @NotBlank(message = "Los nombres son obligatorios")
     @Column(nullable = false, length = 100)

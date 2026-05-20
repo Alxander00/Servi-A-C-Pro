@@ -65,7 +65,7 @@ public class ClienteController {
 
     private ClienteResponseDTO mapearAResponseDTO(ClienteEntity clienteEntity) {
         ClienteResponseDTO dto = new ClienteResponseDTO();
-        dto.setIdCliente(clienteEntity.getIdCLiente());
+        dto.setIdCliente(clienteEntity.getIdCliente());
         dto.setNombres(clienteEntity.getNombres());
         dto.setApellidos(clienteEntity.getApellidos());
         dto.setDui(clienteEntity.getDui());
