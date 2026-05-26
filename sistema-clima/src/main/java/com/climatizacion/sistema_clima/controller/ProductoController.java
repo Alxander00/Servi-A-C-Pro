@@ -6,8 +6,10 @@ import com.climatizacion.sistema_clima.service.ProductoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,9 +21,12 @@ public class ProductoController {
 
     private final ProductoService productoService;
 
-    @PostMapping
-    public ResponseEntity<ProductoResponseDTO> crear(@Valid @RequestBody ProductoRequestDTO dto) {
-        return new ResponseEntity<>(productoService.crear(dto), HttpStatus.CREATED);
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductoResponseDTO> crear(
+            @RequestPart("producto") @Valid ProductoRequestDTO dto,
+            @RequestPart(value = "imagen", required = false) MultipartFile imagen) {
+
+        return new ResponseEntity<>(productoService.crearConImagen(dto, imagen), HttpStatus.CREATED);
     }
 
     @GetMapping

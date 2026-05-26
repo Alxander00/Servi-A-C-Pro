@@ -2,7 +2,6 @@ package com.climatizacion.sistema_clima.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,10 +17,9 @@ public class PedidoEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer idPedido;
 
-    // 🔗 RELACIÓN CON CLIENTE
-    @ManyToOne
-    @JoinColumn(name = "id_cliente", nullable = false)
-    private ClienteEntity cliente;
+    // ELIMINAMOS la relación con ClienteEntity y ponemos el ID directo
+    @Column(name = "id_cliente", nullable = false)
+    private Integer idUsuario;
 
     @Column(name = "fecha_pedido")
     private LocalDateTime fechaPedido;
@@ -34,4 +32,7 @@ public class PedidoEntity {
 
     @Column(nullable = false, length = 30)
     private String estado = "Pendiente";
+
+    @Column(name = "direccion_instalacion", length = 255)
+    private String direccion;
 }

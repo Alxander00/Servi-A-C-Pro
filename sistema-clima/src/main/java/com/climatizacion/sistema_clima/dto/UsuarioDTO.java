@@ -24,4 +24,5 @@ public class UsuarioDTO {
     private String genero;
     private Rol rol;
     private Boolean activo;
+    private String direccion;
 }

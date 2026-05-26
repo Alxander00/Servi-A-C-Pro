@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class ProductoRequestDTO {
@@ -29,4 +30,7 @@ public class ProductoRequestDTO {
 
     @NotNull(message = "La categoria es obligatoria")
     private Long idCategoria;
+
+    // Nuevo campo para recibir las imágenes desde JS
+    private List<String> imagenesUrls;
 }

@@ -1,7 +1,11 @@
 package com.climatizacion.sistema_clima.service.impl;
 
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
+import com.climatizacion.sistema_clima.entities.ClienteEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
+import com.climatizacion.sistema_clima.enums.Genero;
+import com.climatizacion.sistema_clima.enums.Rol;
+import com.climatizacion.sistema_clima.repository.ClienteRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +22,7 @@ public class UsuarioImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ClienteRepository clienteRepository;
 
     @Override
     @Transactional
@@ -37,7 +42,27 @@ public class UsuarioImpl implements UsuarioService {
                 .activo(true)
                 .build();
 
-        return convertirADTO(usuarioRepository.save(usuario));
+        UsuarioEntity usuarioGuardado = usuarioRepository.save(usuario);
+
+        // Si el rol es CLIENTE, crear también en ClienteEntity
+        if (request.getRol() == Rol.CLIENTE) {
+            ClienteEntity cliente = new ClienteEntity();
+            cliente.setNombres(request.getNombre());
+            cliente.setApellidos(request.getApellido());
+            cliente.setDui(request.getDui());
+            cliente.setEmail(request.getEmail());
+            cliente.setPassword(usuario.getPassword()); // misma contraseña encriptada
+            cliente.setTelefono(request.getTelefono());
+            cliente.setFechaNacimiento(request.getFechaNacimiento());
+            if (request.getGenero() != null) {
+                cliente.setGenero(Genero.valueOf(request.getGenero()));
+            }
+            cliente.setDireccionCompleta(request.getDireccion() != null ? request.getDireccion() : "");
+            cliente.setActivo(true);
+            clienteRepository.save(cliente);
+        }
+
+        return convertirADTO(usuarioGuardado);
     }
 
     @Override
@@ -125,6 +150,7 @@ public class UsuarioImpl implements UsuarioService {
                 .telefono(usuario.getTelefono())
                 .rol(usuario.getRol())
                 .activo(usuario.isActivo())
+                .password(usuario.getPassword())   // ← ESTA LÍNEA ES OBLIGATORIA
                 .build();
     }
 }

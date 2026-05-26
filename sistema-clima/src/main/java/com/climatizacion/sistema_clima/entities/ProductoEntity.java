@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Data
@@ -56,4 +58,8 @@ public class ProductoEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_categoria", nullable = false, foreignKey = @ForeignKey(name = "fk_productos_categoria"))
     private CategoriaEntity categoria;
+
+    @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ProductoImagen> imagenes = new ArrayList<>();
 }

@@ -2,6 +2,7 @@ package com.climatizacion.sistema_clima.service;
 
 import com.climatizacion.sistema_clima.dto.ProductoRequestDTO;
 import com.climatizacion.sistema_clima.dto.ProductoResponseDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -11,4 +12,5 @@ public interface ProductoService {
     ProductoResponseDTO obtenerPorId(Long idProducto);
     ProductoResponseDTO actualizar(Long id, ProductoRequestDTO dto);
     void eliminar(Long idProducto);
+    ProductoResponseDTO crearConImagen(ProductoRequestDTO dto, MultipartFile imagen);
 }
