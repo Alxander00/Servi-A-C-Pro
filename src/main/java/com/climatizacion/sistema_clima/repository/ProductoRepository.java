@@ -12,7 +12,7 @@ public interface ProductoRepository extends JpaRepository<ProductoEntity, Long> 
 
     List<ProductoEntity> findByActivoTrue();
 
-    List<ProductoEntity> findByCategoria(Long idCategoria);
+    List<ProductoEntity> findByCategoriaId(Long idCategoria);
 
     @Query("SELECT p, COALESCE(SUM(dp.cantidad), 0) as vendido " +
             "FROM ProductoEntity p LEFT JOIN DetallePedidoEntity dp ON dp.producto = p " +
