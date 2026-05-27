@@ -1,0 +1,38 @@
+package com.climatizacion.sistema_clima.entities;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "pedidos")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class PedidoEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer idPedido;
+
+    // ELIMINAMOS la relación con ClienteEntity y ponemos el ID directo
+    @Column(name = "id_cliente", nullable = false)
+    private Integer idUsuario;
+
+    @Column(name = "fecha_pedido")
+    private LocalDateTime fechaPedido;
+
+    @Column(nullable = false)
+    private Double total = 0.0;
+
+    @Column(name = "incluye_instalacion", nullable = false)
+    private Boolean incluyeInstalacion;
+
+    @Column(nullable = false, length = 30)
+    private String estado = "Pendiente";
+
+    @Column(name = "direccion_instalacion", length = 255)
+    private String direccion;
+}
