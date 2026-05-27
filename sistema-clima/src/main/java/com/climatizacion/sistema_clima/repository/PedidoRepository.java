@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface PedidoRepository extends JpaRepository<PedidoEntity, Integer> {
     List<PedidoEntity> findByIdUsuario(Integer idUsuario);
+    long countByEstadoIn(List<String> estados);
+    long countByIdUsuarioAndEstadoIn(Integer idUsuario, List<String> estados);
 }

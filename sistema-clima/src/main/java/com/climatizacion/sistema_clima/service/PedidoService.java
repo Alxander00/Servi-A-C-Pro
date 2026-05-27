@@ -15,4 +15,7 @@ public interface PedidoService {
     void eliminar(Integer id);
     List<PedidoEntity> listarPorUsuario(Integer idUsuario);
     void cambiarEstado(Integer id, String estado);
+
+    long contarPedidosPorEstado(List<String> estados);
+    long contarPedidosPorEstadoYUsuario(Integer idUsuario, List<String> estados);
 }

@@ -20,4 +20,5 @@ public class ProductoResponseDTO {
     private Long idCategoria;
     private String nombreCategoria;
     private List<String> imagenesUrls;
+    private Long totalVendido;
 }

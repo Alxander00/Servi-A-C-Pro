@@ -7,12 +7,15 @@ import com.climatizacion.sistema_clima.entities.ProductoEntity;
 import com.climatizacion.sistema_clima.entities.ProductoImagen;
 import com.climatizacion.sistema_clima.repository.CategoriaRepository;
 import com.climatizacion.sistema_clima.repository.ProductoRepository;
+import com.climatizacion.sistema_clima.service.HistorialPrecioService;
 import com.climatizacion.sistema_clima.service.ProductoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import java.math.BigDecimal;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,12 +31,13 @@ public class ProductoImpl implements ProductoService {
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
+    private final HistorialPrecioService historialPrecioService;
 
     @Override
     @Transactional
     public ProductoResponseDTO crear(ProductoRequestDTO dto) {
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
-                .orElseThrow(() -> new RuntimeException("Error: La categoria con ID" + dto.getIdCategoria() + "no existe"));
+                .orElseThrow(() -> new RuntimeException("Categoría no existe"));
 
         ProductoEntity producto = ProductoEntity.builder()
                 .nombre(dto.getNombre())
@@ -45,21 +49,22 @@ public class ProductoImpl implements ProductoService {
                 .activo(true)
                 .build();
 
-        // Lógica para mapear y guardar las imágenes vinculadas a este producto
         if (dto.getImagenesUrls() != null && !dto.getImagenesUrls().isEmpty()) {
             List<ProductoImagen> imagenes = dto.getImagenesUrls().stream()
                     .map(url -> ProductoImagen.builder()
                             .imagenUrl(url)
-                            .producto(producto) // Vinculamos al producto actual
-                            .esPrincipal(dto.getImagenesUrls().indexOf(url) == 0) // La primera es principal
+                            .producto(producto)
+                            .esPrincipal(dto.getImagenesUrls().indexOf(url) == 0)
                             .build())
                     .collect(Collectors.toList());
             producto.getImagenes().addAll(imagenes);
         }
 
-        return mapearAResponseDTO(productoRepository.save(producto));
+        ProductoEntity guardado = productoRepository.save(producto);
+        // Registrar precio inicial en historial
+        historialPrecioService.registrarCambioPrecio(guardado.getIdProducto(), guardado.getPrecio());
+        return mapearAResponseDTO(guardado);
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -74,77 +79,65 @@ public class ProductoImpl implements ProductoService {
     @Transactional(readOnly = true)
     public ProductoResponseDTO obtenerPorId(Long id) {
         ProductoEntity producto = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + id));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         return mapearAResponseDTO(producto);
     }
 
     @Override
     @Transactional
     public ProductoResponseDTO actualizar(Long id, ProductoRequestDTO dto) {
-        ProductoEntity productoExistente = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("No se puede actualizar, el producto no existe"));
-
+        ProductoEntity producto = productoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
-                .orElseThrow(() -> new RuntimeException("La nueva categoria no existe"));
+                .orElseThrow(() -> new RuntimeException("Categoría no existe"));
 
-        productoExistente.setNombre(dto.getNombre());
-        productoExistente.setDescripcion(dto.getDescripcion());
-        productoExistente.setPrecio(dto.getPrecio());
-        productoExistente.setCapacidadBtu(dto.getCapacidadBTU());
-        productoExistente.setStock(dto.getStock());
-        productoExistente.setCategoria(categoria);
+        // Guardar precio anterior para comparar
+        BigDecimal precioAnterior = producto.getPrecio();
 
-        // Actualización de imágenes: Limpiamos las actuales y agregamos las nuevas
-        productoExistente.getImagenes().clear();
+        producto.setNombre(dto.getNombre());
+        producto.setDescripcion(dto.getDescripcion());
+        producto.setPrecio(dto.getPrecio());
+        producto.setCapacidadBtu(dto.getCapacidadBTU());
+        producto.setStock(dto.getStock());
+        producto.setCategoria(categoria);
+
+        // Actualizar imágenes
+        producto.getImagenes().clear();
         if (dto.getImagenesUrls() != null && !dto.getImagenesUrls().isEmpty()) {
             List<ProductoImagen> nuevasImagenes = dto.getImagenesUrls().stream()
                     .map(url -> ProductoImagen.builder()
                             .imagenUrl(url)
-                            .producto(productoExistente)
+                            .producto(producto)
                             .esPrincipal(dto.getImagenesUrls().indexOf(url) == 0)
                             .build())
                     .collect(Collectors.toList());
-            productoExistente.getImagenes().addAll(nuevasImagenes);
+            producto.getImagenes().addAll(nuevasImagenes);
         }
 
-        return mapearAResponseDTO(productoRepository.save(productoExistente));
+        ProductoEntity actualizado = productoRepository.save(producto);
+
+        // Si el precio cambió, registrar en historial
+        if (precioAnterior.compareTo(dto.getPrecio()) != 0) {
+            historialPrecioService.registrarCambioPrecio(id, dto.getPrecio());
+        }
+
+        return mapearAResponseDTO(actualizado);
     }
 
     @Override
     @Transactional
     public void eliminar(Long id) {
         ProductoEntity producto = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado."));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         producto.setActivo(false);
         productoRepository.save(producto);
     }
 
-    private ProductoResponseDTO mapearAResponseDTO(ProductoEntity entity){
-        // Extraemos solo las URLs de las entidades ProductoImagen para enviar al Frontend
-        List<String> urls = entity.getImagenes() != null
-                ? entity.getImagenes().stream().map(ProductoImagen::getImagenUrl).collect(Collectors.toList())
-                : new ArrayList<>();
-
-        return ProductoResponseDTO.builder()
-                .idProducto(entity.getIdProducto())
-                .nombre(entity.getNombre())
-                .descripcion(entity.getDescripcion())
-                .precio(entity.getPrecio())
-                .capacidadBTU(entity.getCapacidadBtu())
-                .stock(entity.getStock())
-                .activo(entity.getActivo())
-                .idCategoria(entity.getCategoria().getIdCategoria())
-                .nombreCategoria(entity.getCategoria().getNombre())
-                .imagenesUrls(urls) // Pasamos la lista de URLs
-                .build();
-    }
-
     @Override
     @Transactional
-    public ProductoResponseDTO crearConImagen(ProductoRequestDTO dto, MultipartFile archivoImagen) {
-        // 1. Guardar los datos de texto (Igual que antes)
+    public ProductoResponseDTO crearConImagenes(ProductoRequestDTO dto, List<MultipartFile> imagenes) {
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
-                .orElseThrow(() -> new RuntimeException("Error: La categoria con ID" + dto.getIdCategoria() + "no existe"));
+                .orElseThrow(() -> new RuntimeException("Categoría no existe"));
 
         ProductoEntity producto = ProductoEntity.builder()
                 .nombre(dto.getNombre())
@@ -156,39 +149,63 @@ public class ProductoImpl implements ProductoService {
                 .activo(true)
                 .build();
 
-        // 2. Lógica para guardar el ARCHIVO FÍSICO
-        if (archivoImagen != null && !archivoImagen.isEmpty()) {
-            try {
-                // Crear carpeta si no existe
-                Path directorioUploads = Paths.get("uploads");
-                if (!Files.exists(directorioUploads)) {
-                    Files.createDirectories(directorioUploads);
+        ProductoEntity productoGuardado = productoRepository.save(producto);
+
+        if (imagenes != null && !imagenes.isEmpty()) {
+            for (MultipartFile img : imagenes) {
+                try {
+                    Path uploadDir = Paths.get("uploads");
+                    if (!Files.exists(uploadDir)) Files.createDirectories(uploadDir);
+                    String nombreOriginal = img.getOriginalFilename();
+                    String nombreUnico = UUID.randomUUID().toString() + "_" + nombreOriginal;
+                    Path rutaCompleta = uploadDir.resolve(nombreUnico);
+                    Files.copy(img.getInputStream(), rutaCompleta, StandardCopyOption.REPLACE_EXISTING);
+                    String urlPublica = "/uploads/" + nombreUnico;
+                    ProductoImagen imagenEntity = ProductoImagen.builder()
+                            .imagenUrl(urlPublica)
+                            .producto(productoGuardado)
+                            .esPrincipal(imagenes.indexOf(img) == 0)
+                            .build();
+                    productoGuardado.getImagenes().add(imagenEntity);
+                } catch (IOException e) {
+                    throw new RuntimeException("Error guardando imagen: " + e.getMessage());
                 }
-
-                // Generar un nombre único para la imagen para que no se sobrescriban
-                String nombreOriginal = archivoImagen.getOriginalFilename();
-                String nombreUnico = UUID.randomUUID().toString() + "_" + nombreOriginal;
-                Path rutaArchivo = directorioUploads.resolve(nombreUnico);
-
-                // Copiar el archivo del dispositivo a la carpeta del servidor
-                Files.copy(archivoImagen.getInputStream(), rutaArchivo, StandardCopyOption.REPLACE_EXISTING);
-
-                // Generar la URL pública y enlazarla a la base de datos
-                String urlPublica = "/uploads/" + nombreUnico;
-
-                ProductoImagen imagenDb = ProductoImagen.builder()
-                        .imagenUrl(urlPublica)
-                        .producto(producto)
-                        .esPrincipal(true)
-                        .build();
-
-                producto.getImagenes().add(imagenDb);
-
-            } catch (Exception e) {
-                throw new RuntimeException("Error al guardar la imagen: " + e.getMessage());
             }
+            productoGuardado = productoRepository.save(productoGuardado);
         }
 
-        return mapearAResponseDTO(productoRepository.save(producto));
+        // Registrar precio inicial
+        historialPrecioService.registrarCambioPrecio(productoGuardado.getIdProducto(), productoGuardado.getPrecio());
+        return mapearAResponseDTO(productoGuardado);
+    }
+
+    @Override
+    public List<ProductoResponseDTO> listarActivosOrdenadosPorPopularidad() {
+        List<Object[]> resultados = productoRepository.findProductosConVentas();
+        return resultados.stream().map(row -> {
+            ProductoEntity p = (ProductoEntity) row[0];
+            Long vendido = ((Number) row[1]).longValue();
+            ProductoResponseDTO dto = mapearAResponseDTO(p);
+            dto.setTotalVendido(vendido);
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+    private ProductoResponseDTO mapearAResponseDTO(ProductoEntity entity) {
+        List<String> urls = entity.getImagenes() != null
+                ? entity.getImagenes().stream().map(ProductoImagen::getImagenUrl).collect(Collectors.toList())
+                : new ArrayList<>();
+        return ProductoResponseDTO.builder()
+                .idProducto(entity.getIdProducto())
+                .nombre(entity.getNombre())
+                .descripcion(entity.getDescripcion())
+                .precio(entity.getPrecio())
+                .capacidadBTU(entity.getCapacidadBtu())
+                .stock(entity.getStock())
+                .activo(entity.getActivo())
+                .idCategoria(entity.getCategoria().getIdCategoria())
+                .nombreCategoria(entity.getCategoria().getNombre())
+                .imagenesUrls(urls)
+                .build();
     }
 }

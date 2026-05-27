@@ -17,4 +17,6 @@ public interface UsuarioService {
     void cambiarPassword(Long idUsuario, String password);
 
     void cambiarEstado(Long idUsuario, boolean estado);
+    void enviarLinkRecuperacion(String email);
+    void restablecerPassword(String token, String nuevaPassword);
 }

@@ -2,6 +2,8 @@ package com.climatizacion.sistema_clima.service;
 
 import com.climatizacion.sistema_clima.dto.CitaRequestDTO;
 import com.climatizacion.sistema_clima.dto.CitaResponseDTO;
+import com.climatizacion.sistema_clima.enums.EstadoCita;
+
 import java.util.List;
 
 public interface CitaService {
@@ -10,4 +12,6 @@ public interface CitaService {
     CitaResponseDTO crear(CitaRequestDTO request);
     CitaResponseDTO actualizar(Integer id, CitaRequestDTO request);
     void cambiarEstado(Integer id, String estado);
+    List<CitaResponseDTO> obtenerPorCliente(Long idCliente);
+    long contarCitasPorClienteYEstados(Long idCliente, List<EstadoCita> estados);
 }

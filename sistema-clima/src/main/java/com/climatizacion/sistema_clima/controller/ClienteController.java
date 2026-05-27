@@ -6,22 +6,22 @@ import com.climatizacion.sistema_clima.entities.ClienteEntity;
 import com.climatizacion.sistema_clima.enums.Genero;
 import com.climatizacion.sistema_clima.repository.ClienteRepository;
 import com.climatizacion.sistema_clima.service.ClienteService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/clientes")
+@RequiredArgsConstructor  // <-- Para inyectar dependencias con final
 public class ClienteController {
 
     private final ClienteService clienteService;
-
-    public ClienteController(ClienteService clienteService) {
-        this.clienteService = clienteService;
-    }
+    private final ClienteRepository clienteRepository;  // <-- CORREGIDO: se inyecta el repositorio
 
     @PostMapping
     public ResponseEntity<ClienteResponseDTO> crearCliente(@RequestBody ClienteRequestDTO clienteRequestDTO) {
@@ -61,6 +61,20 @@ public class ClienteController {
     public ResponseEntity<Void> desactivarCliente(@PathVariable("id") Long id) {
         clienteService.desactivarCliente(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{idCliente}/coordenadas")
+    public ResponseEntity<Map<String, Double>> obtenerCoordenadas(@PathVariable Long idCliente) {
+        ClienteEntity cliente = clienteRepository.findById(idCliente)
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        if (cliente.getLatitud() != null && cliente.getLongitud() != null) {
+            return ResponseEntity.ok(Map.of(
+                    "lat", cliente.getLatitud().doubleValue(),
+                    "lng", cliente.getLongitud().doubleValue()
+            ));
+        } else {
+            return ResponseEntity.noContent().build();
+        }
     }
 
     private ClienteResponseDTO mapearAResponseDTO(ClienteEntity clienteEntity) {

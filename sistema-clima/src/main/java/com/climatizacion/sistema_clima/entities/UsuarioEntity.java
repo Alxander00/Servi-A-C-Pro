@@ -63,6 +63,9 @@ public class UsuarioEntity {
 
     private boolean activo = true;
 
+    @Column(name = "direccion")
+    private String direccion;
+
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();

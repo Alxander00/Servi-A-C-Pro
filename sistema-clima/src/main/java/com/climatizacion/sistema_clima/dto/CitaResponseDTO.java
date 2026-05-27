@@ -11,6 +11,7 @@ public class CitaResponseDTO {
     private Integer idCita;
     private Long idCliente;
     private String nombreCliente;
+    private String direccionCliente;
     private Integer idPedido;
     private Long idTecnico;
     private String nombreTecnico;

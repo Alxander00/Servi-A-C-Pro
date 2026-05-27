@@ -2,6 +2,7 @@ package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.CitaRequestDTO;
 import com.climatizacion.sistema_clima.dto.CitaResponseDTO;
+import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.service.CitaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,5 +43,15 @@ public class CitaController {
     public ResponseEntity<Void> cambiarEstado(@PathVariable Integer id, @RequestParam String estado) {
         citaService.cambiarEstado(id, estado);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/cliente/{idCliente}")
+    public ResponseEntity<List<CitaResponseDTO>> listarPorCliente(@PathVariable Long idCliente) {
+        return ResponseEntity.ok(citaService.obtenerPorCliente(idCliente));
+    }
+
+    @GetMapping("/conteos/pendientes/cliente/{idCliente}")
+    public ResponseEntity<Long> contarCitasPendientesCliente(@PathVariable Long idCliente) {
+        return ResponseEntity.ok(citaService.contarCitasPorClienteYEstados(idCliente, List.of(EstadoCita.PROGRAMADA, EstadoCita.EN_PROCESO)));
     }
 }

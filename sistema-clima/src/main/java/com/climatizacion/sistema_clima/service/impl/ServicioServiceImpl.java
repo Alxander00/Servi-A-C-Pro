@@ -5,7 +5,6 @@ import com.climatizacion.sistema_clima.repository.ServicioRepository;
 import com.climatizacion.sistema_clima.service.ServicioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 
 @Service

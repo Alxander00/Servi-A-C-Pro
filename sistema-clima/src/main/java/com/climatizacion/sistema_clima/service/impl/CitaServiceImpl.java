@@ -12,10 +12,12 @@ import com.climatizacion.sistema_clima.repository.ClienteRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.CitaService;
+import com.climatizacion.sistema_clima.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,6 +29,7 @@ public class CitaServiceImpl implements CitaService {
     private final ClienteRepository clienteRepository;
     private final PedidoRepository pedidoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final EmailService emailService;   // para enviar correos
 
     @Override
     @Transactional(readOnly = true)
@@ -49,16 +52,13 @@ public class CitaServiceImpl implements CitaService {
     public CitaResponseDTO crear(CitaRequestDTO request) {
         ClienteEntity cliente = clienteRepository.findById(request.getIdCliente())
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-
         UsuarioEntity tecnico = usuarioRepository.findById(request.getIdTecnico())
                 .orElseThrow(() -> new RuntimeException("Técnico no encontrado"));
-
         PedidoEntity pedido = null;
         if (request.getIdPedido() != null) {
             pedido = pedidoRepository.findById(request.getIdPedido())
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
         }
-
         CitaEntity cita = CitaEntity.builder()
                 .cliente(cliente)
                 .pedido(pedido)
@@ -69,8 +69,19 @@ public class CitaServiceImpl implements CitaService {
                 .notas(request.getNotas())
                 .build();
 
-        // Nota: Los triggers de la DB validarán el choque de horarios al hacer save()
-        return mapToResponseDTO(citaRepository.save(cita));
+        CitaEntity citaGuardada = citaRepository.save(cita);
+
+        // ✅ NOTIFICAR AL TÉCNICO POR CORREO
+        String fechaFormateada = request.getFechaInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        emailService.enviarCorreoNuevaCita(
+                tecnico.getEmail(),
+                tecnico.getNombres() + " " + tecnico.getApellidos(),
+                cliente.getNombres() + " " + cliente.getApellidos(),
+                fechaFormateada,
+                cliente.getDireccionCompleta()
+        );
+
+        return mapToResponseDTO(citaGuardada);
     }
 
     @Override
@@ -78,13 +89,10 @@ public class CitaServiceImpl implements CitaService {
     public CitaResponseDTO actualizar(Integer id, CitaRequestDTO request) {
         CitaEntity cita = citaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
-
-        // Se puede añadir la misma lógica de búsqueda de entidades que en 'crear' para actualizar relaciones
         cita.setFechaInicio(request.getFechaInicio());
         cita.setFechaFin(request.getFechaFin());
-        if(request.getEstado() != null) cita.setEstado(request.getEstado());
+        if (request.getEstado() != null) cita.setEstado(request.getEstado());
         cita.setNotas(request.getNotas());
-
         return mapToResponseDTO(citaRepository.save(cita));
     }
 
@@ -102,6 +110,7 @@ public class CitaServiceImpl implements CitaService {
                 .idCita(entity.getIdCita())
                 .idCliente(entity.getCliente().getIdCliente())
                 .nombreCliente(entity.getCliente().getNombres() + " " + entity.getCliente().getApellidos())
+                .direccionCliente(entity.getCliente().getDireccionCompleta())
                 .idPedido(entity.getPedido() != null ? entity.getPedido().getIdPedido() : null)
                 .idTecnico(entity.getTecnico().getIdUsuario())
                 .nombreTecnico(entity.getTecnico().getNombres() + " " + entity.getTecnico().getApellidos())
@@ -110,5 +119,17 @@ public class CitaServiceImpl implements CitaService {
                 .estado(entity.getEstado())
                 .notas(entity.getNotas())
                 .build();
+    }
+
+    @Override
+    public List<CitaResponseDTO> obtenerPorCliente(Long idCliente) {
+        return citaRepository.findByCliente_IdCliente(idCliente).stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public long contarCitasPorClienteYEstados(Long idCliente, List<EstadoCita> estados) {
+        return citaRepository.countByCliente_IdClienteAndEstadoIn(idCliente, estados);
     }
 }

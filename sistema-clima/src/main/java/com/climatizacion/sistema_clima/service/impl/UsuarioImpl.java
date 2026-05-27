@@ -2,18 +2,26 @@ package com.climatizacion.sistema_clima.service.impl;
 
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
 import com.climatizacion.sistema_clima.entities.ClienteEntity;
+import com.climatizacion.sistema_clima.entities.PasswordResetTokenEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.enums.Genero;
 import com.climatizacion.sistema_clima.enums.Rol;
 import com.climatizacion.sistema_clima.repository.ClienteRepository;
+import com.climatizacion.sistema_clima.repository.PasswordResetTokenRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
+import com.climatizacion.sistema_clima.service.EmailService;
+import com.climatizacion.sistema_clima.service.GeocodingService;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,6 +31,12 @@ public class UsuarioImpl implements UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final ClienteRepository clienteRepository;
+    private final PasswordResetTokenRepository tokenRepository;
+    private final EmailService emailService;
+    private final GeocodingService geocodingService;
+
+    @Value("${frontend.url}")
+    private String frontendUrl;
 
     @Override
     @Transactional
@@ -44,14 +58,13 @@ public class UsuarioImpl implements UsuarioService {
 
         UsuarioEntity usuarioGuardado = usuarioRepository.save(usuario);
 
-        // Si el rol es CLIENTE, crear también en ClienteEntity
         if (request.getRol() == Rol.CLIENTE) {
             ClienteEntity cliente = new ClienteEntity();
             cliente.setNombres(request.getNombre());
             cliente.setApellidos(request.getApellido());
             cliente.setDui(request.getDui());
             cliente.setEmail(request.getEmail());
-            cliente.setPassword(usuario.getPassword()); // misma contraseña encriptada
+            cliente.setPassword(usuario.getPassword());
             cliente.setTelefono(request.getTelefono());
             cliente.setFechaNacimiento(request.getFechaNacimiento());
             if (request.getGenero() != null) {
@@ -60,6 +73,8 @@ public class UsuarioImpl implements UsuarioService {
             cliente.setDireccionCompleta(request.getDireccion() != null ? request.getDireccion() : "");
             cliente.setActivo(true);
             clienteRepository.save(cliente);
+
+            emailService.enviarCorreoBienvenida(usuario.getEmail(), usuario.getNombres());
         }
 
         return convertirADTO(usuarioGuardado);
@@ -99,7 +114,6 @@ public class UsuarioImpl implements UsuarioService {
     @Transactional
     public UsuarioDTO actualizarUsuario(Long idUsuario, UsuarioDTO request) {
         UsuarioEntity usuarioExistente = obtenerEntidadPorId(idUsuario);
-
         validarDatosUnicos(request.getEmail(), request.getDui(), idUsuario);
 
         usuarioExistente.setNombres(request.getNombre());
@@ -110,7 +124,21 @@ public class UsuarioImpl implements UsuarioService {
         usuarioExistente.setTelefono(request.getTelefono());
         usuarioExistente.setGenero(request.getGenero());
         usuarioExistente.setRol(request.getRol());
+        usuarioExistente.setDireccion(request.getDireccion());
 
+        // Si es CLIENTE, actualizar también la dirección en la tabla clientes y geocodificar
+        if (request.getRol() == Rol.CLIENTE) {
+            clienteRepository.findById(idUsuario).ifPresent(cliente -> {
+                cliente.setDireccionCompleta(request.getDireccion());
+                // Geocodificar la nueva dirección y guardar coordenadas
+                double[] coords = geocodingService.geocode(request.getDireccion());
+                if (coords != null) {
+                    cliente.setLatitud(BigDecimal.valueOf(coords[0]));
+                    cliente.setLongitud(BigDecimal.valueOf(coords[1]));
+                }
+                clienteRepository.save(cliente);
+            });
+        }
 
         return convertirADTO(usuarioRepository.save(usuarioExistente));
     }
@@ -131,6 +159,45 @@ public class UsuarioImpl implements UsuarioService {
         usuarioRepository.save(usuario);
     }
 
+    @Override
+    @Transactional
+    public void enviarLinkRecuperacion(String email) {
+        UsuarioEntity user = usuarioRepository.findByEmail(email).orElse(null);
+        if (user == null) return;
+        tokenRepository.deleteByUsuarioId(user.getIdUsuario());
+
+        String token = UUID.randomUUID().toString();
+        PasswordResetTokenEntity resetToken = PasswordResetTokenEntity.builder()
+                .token(token)
+                .usuario(user)
+                .expiryDate(LocalDateTime.now().plusHours(1))
+                .used(false)
+                .build();
+        tokenRepository.save(resetToken);
+
+        String resetLink = frontendUrl + "/reset-password.html?token=" + token;
+        String cuerpo = "<h2>Restablece tu contraseña</h2>" +
+                "<p>Haz clic en el siguiente enlace para cambiar tu contraseña:</p>" +
+                "<a href=\"" + resetLink + "\">" + resetLink + "</a>" +
+                "<p>Este enlace expira en 1 hora.</p>" +
+                "<p>Si no solicitaste este cambio, ignora este mensaje.</p>";
+        emailService.enviarCorreo(user.getEmail(), "Recuperación de contraseña - ClimaPro", cuerpo);
+    }
+
+    @Override
+    @Transactional
+    public void restablecerPassword(String token, String nuevaPassword) {
+        PasswordResetTokenEntity resetToken = tokenRepository.findByTokenAndUsedFalse(token)
+                .orElseThrow(() -> new RuntimeException("Token inválido o ya usado"));
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("El token ha expirado");
+        }
+        UsuarioEntity user = resetToken.getUsuario();
+        user.setPassword(passwordEncoder.encode(nuevaPassword));
+        usuarioRepository.save(user);
+        resetToken.setUsed(true);
+        tokenRepository.save(resetToken);
+    }
 
     private UsuarioEntity obtenerEntidadPorId(Long id) {
         return usuarioRepository.findById(id)
@@ -138,6 +205,7 @@ public class UsuarioImpl implements UsuarioService {
     }
 
     private void validarDatosUnicos(String email, String dui, Long idUsuarioActual) {
+        // implementar si es necesario
     }
 
     private UsuarioDTO convertirADTO(UsuarioEntity usuario) {
@@ -150,7 +218,7 @@ public class UsuarioImpl implements UsuarioService {
                 .telefono(usuario.getTelefono())
                 .rol(usuario.getRol())
                 .activo(usuario.isActivo())
-                .password(usuario.getPassword())   // ← ESTA LÍNEA ES OBLIGATORIA
+                .password(usuario.getPassword())
                 .build();
     }
 }

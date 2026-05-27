@@ -5,9 +5,12 @@ import com.climatizacion.sistema_clima.dto.PedidoRequestDTO;
 import com.climatizacion.sistema_clima.entities.DetallePedidoEntity;
 import com.climatizacion.sistema_clima.entities.PedidoEntity;
 import com.climatizacion.sistema_clima.entities.ProductoEntity;
+import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.repository.DetallePedidoRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.ProductoRepository;
+import com.climatizacion.sistema_clima.repository.UsuarioRepository;
+import com.climatizacion.sistema_clima.service.EmailService;
 import com.climatizacion.sistema_clima.service.PedidoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,14 +27,14 @@ public class PedidoServiceImpl implements PedidoService {
     private final PedidoRepository repository;
     private final ProductoRepository productoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
+    private final UsuarioRepository usuarioRepository;   // para obtener datos del cliente
+    private final EmailService emailService;           // para enviar correos
 
     @Override
     @Transactional
     public PedidoEntity crearPedidoCompleto(PedidoRequestDTO dto) {
-
-        // 1. Crear el encabezado del Pedido con el ID directo
         PedidoEntity pedido = new PedidoEntity();
-        pedido.setIdUsuario(dto.getIdUsuario()); // <-- Asignación directa
+        pedido.setIdUsuario(dto.getIdUsuario());
         pedido.setTotal(dto.getTotal());
         pedido.setIncluyeInstalacion(dto.getIncluyeInstalacion());
         pedido.setFechaPedido(LocalDateTime.now());
@@ -40,28 +43,27 @@ public class PedidoServiceImpl implements PedidoService {
 
         PedidoEntity pedidoGuardado = repository.save(pedido);
 
-        // 2. Procesar el carrito (Detalles y Stock)
         for (DetallePedidoRequestDTO item : dto.getItems()) {
             ProductoEntity producto = productoRepository.findById(item.getIdProducto())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-
             if (producto.getStock() < item.getCantidad()) {
                 throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
             }
-
-            // Descontar stock
             producto.setStock(producto.getStock() - item.getCantidad());
             productoRepository.save(producto);
 
-            // Crear el Detalle
             DetallePedidoEntity detalle = new DetallePedidoEntity();
             detalle.setPedido(pedidoGuardado);
             detalle.setProducto(producto);
             detalle.setCantidad(item.getCantidad());
             detalle.setPrecioUnitario(BigDecimal.valueOf(item.getPrecioUnitario()));
-
             detallePedidoRepository.save(detalle);
         }
+
+        // ✅ NOTIFICAR AL CLIENTE QUE EL PEDIDO HA SIDO CREADO
+        UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedidoGuardado.getIdUsuario()))
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        emailService.enviarCorreoPedidoCreado(usuario.getEmail(), usuario.getNombres(), pedidoGuardado.getIdPedido());
 
         return pedidoGuardado;
     }
@@ -93,9 +95,27 @@ public class PedidoServiceImpl implements PedidoService {
 
     @Override
     @Transactional
-    public void cambiarEstado(Integer id, String estado) {
+    public void cambiarEstado(Integer id, String nuevoEstado) {
         PedidoEntity pedido = obtenerPorId(id);
-        pedido.setEstado(estado);
+        String estadoAnterior = pedido.getEstado();
+        pedido.setEstado(nuevoEstado);
         repository.save(pedido);
+
+        // ✅ NOTIFICAR AL CLIENTE EL CAMBIO DE ESTADO
+        UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedido.getIdUsuario()))
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        emailService.enviarCorreoCambioEstadoPedido(usuario.getEmail(), usuario.getNombres(),
+                id, estadoAnterior, nuevoEstado);
+    }
+
+    // En PedidoServiceImpl
+    @Override
+    public long contarPedidosPorEstado(List<String> estados) {
+        return repository.countByEstadoIn(estados);
+    }
+
+    @Override
+    public long contarPedidosPorEstadoYUsuario(Integer idUsuario, List<String> estados) {
+        return repository.countByIdUsuarioAndEstadoIn(idUsuario, estados);
     }
 }

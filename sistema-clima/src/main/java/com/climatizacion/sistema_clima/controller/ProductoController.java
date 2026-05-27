@@ -1,7 +1,9 @@
 package com.climatizacion.sistema_clima.controller;
 
+import com.climatizacion.sistema_clima.dto.HistorialPrecioDTO;
 import com.climatizacion.sistema_clima.dto.ProductoRequestDTO;
 import com.climatizacion.sistema_clima.dto.ProductoResponseDTO;
+import com.climatizacion.sistema_clima.service.HistorialPrecioService;
 import com.climatizacion.sistema_clima.service.ProductoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,13 +22,14 @@ import java.util.List;
 public class ProductoController {
 
     private final ProductoService productoService;
+    private final HistorialPrecioService historialPrecioService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoResponseDTO> crear(
             @RequestPart("producto") @Valid ProductoRequestDTO dto,
-            @RequestPart(value = "imagen", required = false) MultipartFile imagen) {
-
-        return new ResponseEntity<>(productoService.crearConImagen(dto, imagen), HttpStatus.CREATED);
+            @RequestPart(value = "imagenes", required = false) List<MultipartFile> imagenes) {
+        ProductoResponseDTO response = productoService.crearConImagenes(dto, imagenes);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @GetMapping
@@ -45,8 +48,19 @@ public class ProductoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ProductoResponseDTO> eliminar(@PathVariable Long id) {
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         productoService.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ProductoController.java
+    @GetMapping("/populares")
+    public ResponseEntity<List<ProductoResponseDTO>> listarPopulares() {
+        return ResponseEntity.ok(productoService.listarActivosOrdenadosPorPopularidad());
+    }
+
+    @GetMapping("/{id}/historial-precios")
+    public ResponseEntity<List<HistorialPrecioDTO>> obtenerHistorialPrecios(@PathVariable Long id) {
+        return ResponseEntity.ok(historialPrecioService.obtenerHistorialPorProducto(id));
     }
 }
