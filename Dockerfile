@@ -1,10 +1,12 @@
 # Etapa de construcción
-FROM maven:3.8.4-openjdk-17 AS build
+# Usamos una imagen de Maven basada en Eclipse Temurin
+FROM maven:3.9-eclipse-temurin-17 AS build
 COPY . .
-RUN mvn clean package -DskipTests
+RUN ./mvnw clean package -DskipTests
 
 # Etapa de ejecución
-FROM openjdk:17-jdk-slim
+# Usamos JRE (Java Runtime Environment) de Eclipse Temurin para que sea más ligero
+FROM eclipse-temurin:17-jre-jammy
 COPY --from=build /target/*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","/app.jar"]
