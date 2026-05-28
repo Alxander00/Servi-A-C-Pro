@@ -36,7 +36,7 @@ public class SolicitudController {
     }
 
     @PostMapping("/{id}/asignar")
-    public ResponseEntity<Void> asignarTecnico(@PathVariable Integer id,
+    public ResponseEntity<Void> asignarTecnico(@PathVariable Long id,
                                                @RequestBody Map<String, Object> payload) {
         Long idTecnico = Long.valueOf(payload.get("idTecnico").toString());
         LocalDateTime fechaInicio = LocalDateTime.parse(payload.get("fechaInicio").toString());
@@ -46,7 +46,7 @@ public class SolicitudController {
     }
 
     @PostMapping("/{id}/rechazar")
-    public ResponseEntity<Void> rechazarSolicitud(@PathVariable Integer id) {
+    public ResponseEntity<Void> rechazarSolicitud(@PathVariable Long id) {
         solicitudService.rechazarSolicitud(id);
         return ResponseEntity.noContent().build();
     }

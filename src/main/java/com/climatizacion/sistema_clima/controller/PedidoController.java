@@ -42,22 +42,22 @@ public class PedidoController {
     }
 
     @GetMapping("/{id}")
-    public PedidoEntity obtener(@PathVariable Integer id) {
+    public PedidoEntity obtener(@PathVariable Long id) {
         return service.obtenerPorId(id);
     }
 
     @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable Integer id) {
+    public void eliminar(@PathVariable Long id) {
         service.eliminar(id);
     }
 
     @GetMapping("/usuario/{idUsuario}")
-    public List<PedidoEntity> listarPorUsuario(@PathVariable Integer idUsuario) {
+    public List<PedidoEntity> listarPorUsuario(@PathVariable Long idUsuario) {
         return service.listarPorUsuario(idUsuario);
     }
 
     @PatchMapping("/{id}/estado")
-    public ResponseEntity<Void> cambiarEstado(@PathVariable Integer id, @RequestParam String estado) {
+    public ResponseEntity<Void> cambiarEstado(@PathVariable Long id, @RequestParam String estado) {
         service.cambiarEstado(id, estado);
         return ResponseEntity.noContent().build();
     }
@@ -260,7 +260,7 @@ public class PedidoController {
     }
 
     @GetMapping("/conteos/pendientes/cliente/{idUsuario}")
-    public ResponseEntity<Long> contarPedidosPendientesCliente(@PathVariable Integer idUsuario) {
+    public ResponseEntity<Long> contarPedidosPendientesCliente(@PathVariable Long idUsuario) {
         return ResponseEntity.ok(service.contarPedidosPorEstadoYUsuario(idUsuario, List.of("Pendiente", "En Proceso")));
     }
 

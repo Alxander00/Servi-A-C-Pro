@@ -25,12 +25,12 @@ public class ServicioController {
     }
 
     @GetMapping("/{id}")
-    public ServicioEntity obtener(@PathVariable Integer id) {
+    public ServicioEntity obtener(@PathVariable Long id) {
         return service.obtenerPorId(id);
     }
 
     @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable Integer id) {
+    public void eliminar(@PathVariable Long id) {
         service.eliminar(id);
     }
 }

@@ -34,12 +34,12 @@ public class EquipoClienteController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<EquipoClienteResponseDTO> actualizar(@PathVariable Integer id, @Valid @RequestBody EquipoClienteRequestDTO request) {
+    public ResponseEntity<EquipoClienteResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody EquipoClienteRequestDTO request) {
         return ResponseEntity.ok(equipoClienteService.actualizar(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         equipoClienteService.eliminar(id);
         return ResponseEntity.noContent().build();
     }

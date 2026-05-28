@@ -35,12 +35,12 @@ public class CitaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<CitaResponseDTO> actualizar(@PathVariable Integer id, @Valid @RequestBody CitaRequestDTO request) {
+    public ResponseEntity<CitaResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody CitaRequestDTO request) {
         return ResponseEntity.ok(citaService.actualizar(id, request));
     }
 
     @PatchMapping("/{id}/estado")
-    public ResponseEntity<Void> cambiarEstado(@PathVariable Integer id, @RequestParam String estado) {
+    public ResponseEntity<Void> cambiarEstado(@PathVariable Long id, @RequestParam String estado) {
         citaService.cambiarEstado(id, estado);
         return ResponseEntity.noContent().build();
     }

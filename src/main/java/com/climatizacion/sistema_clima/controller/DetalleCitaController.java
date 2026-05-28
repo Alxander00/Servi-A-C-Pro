@@ -19,7 +19,7 @@ public class DetalleCitaController {
     private final DetalleCitaService detalleCitaService;
 
     @GetMapping("/cita/{idCita}")
-    public ResponseEntity<List<DetalleCitaResponseDTO>> listarPorCita(@PathVariable Integer idCita) {
+    public ResponseEntity<List<DetalleCitaResponseDTO>> listarPorCita(@PathVariable Long idCita) {
         return ResponseEntity.ok(detalleCitaService.obtenerPorCita(idCita));
     }
 
@@ -29,7 +29,7 @@ public class DetalleCitaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         detalleCitaService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
