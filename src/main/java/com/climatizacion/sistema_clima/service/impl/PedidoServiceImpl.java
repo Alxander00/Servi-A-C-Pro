@@ -106,7 +106,6 @@ public class PedidoServiceImpl implements PedidoService {
         pedido.setEstado(nuevoEstado);
         repository.save(pedido);
 
-        // Notificación por correo (NO CRÍTICA)
         try {
             UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedido.getIdUsuario()))
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -114,7 +113,6 @@ public class PedidoServiceImpl implements PedidoService {
                     id, estadoAnterior, nuevoEstado);
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo enviar correo de cambio de estado del pedido #" + id + " - " + e.getMessage());
-            // No lanzamos la excepción
         }
     }
 
