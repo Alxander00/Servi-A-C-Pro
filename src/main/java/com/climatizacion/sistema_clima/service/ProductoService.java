@@ -13,5 +13,7 @@ public interface ProductoService {
     ProductoResponseDTO actualizar(Long id, ProductoRequestDTO dto);
     void eliminar(Long idProducto);
     ProductoResponseDTO crearConImagenes(ProductoRequestDTO dto, List<MultipartFile> imagenes);
+
+    ProductoResponseDTO actualizarConImagenes(Long id, ProductoRequestDTO dto, List<MultipartFile> nuevasImagenes);
     List<ProductoResponseDTO> listarActivosOrdenadosPorPopularidad();
 }

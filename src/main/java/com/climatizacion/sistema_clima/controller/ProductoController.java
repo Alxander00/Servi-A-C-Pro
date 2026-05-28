@@ -32,6 +32,22 @@ public class ProductoController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    // NUEVO: PUT que acepta multipart para actualizar con imágenes
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductoResponseDTO> actualizarConImagenes(
+            @PathVariable Long id,
+            @RequestPart("producto") @Valid ProductoRequestDTO dto,
+            @RequestPart(value = "imagenes", required = false) List<MultipartFile> imagenes) {
+        ProductoResponseDTO response = productoService.actualizarConImagenes(id, dto, imagenes);
+        return ResponseEntity.ok(response);
+    }
+
+    // Mantenemos el PUT original (solo JSON) por si se necesita, pero el frontend usará el de arriba
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProductoResponseDTO> actualizarJson(@PathVariable Long id, @Valid @RequestBody ProductoRequestDTO dto) {
+        return ResponseEntity.ok(productoService.actualizar(id, dto));
+    }
+
     @GetMapping
     public ResponseEntity<List<ProductoResponseDTO>> listarActivos() {
         return ResponseEntity.ok(productoService.listarActivos());
@@ -42,18 +58,12 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.obtenerPorId(id));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ProductoResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody ProductoRequestDTO dto) {
-        return ResponseEntity.ok(productoService.actualizar(id, dto));
-    }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         productoService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
 
-    // ProductoController.java
     @GetMapping("/populares")
     public ResponseEntity<List<ProductoResponseDTO>> listarPopulares() {
         return ResponseEntity.ok(productoService.listarActivosOrdenadosPorPopularidad());

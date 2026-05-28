@@ -14,16 +14,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import java.math.BigDecimal;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,9 +33,9 @@ public class ProductoImpl implements ProductoService {
     @Override
     @Transactional
     public ProductoResponseDTO crear(ProductoRequestDTO dto) {
+        // ... (sin cambios, igual que antes)
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
                 .orElseThrow(() -> new RuntimeException("Categoría no existe"));
-
         ProductoEntity producto = ProductoEntity.builder()
                 .nombre(dto.getNombre())
                 .descripcion(dto.getDescripcion())
@@ -50,20 +45,13 @@ public class ProductoImpl implements ProductoService {
                 .categoria(categoria)
                 .activo(true)
                 .build();
-
         if (dto.getImagenesUrls() != null && !dto.getImagenesUrls().isEmpty()) {
             List<ProductoImagen> imagenes = dto.getImagenesUrls().stream()
-                    .map(url -> ProductoImagen.builder()
-                            .imagenUrl(url)
-                            .producto(producto)
-                            .esPrincipal(dto.getImagenesUrls().indexOf(url) == 0)
-                            .build())
+                    .map(url -> ProductoImagen.builder().imagenUrl(url).producto(producto).esPrincipal(dto.getImagenesUrls().indexOf(url) == 0).build())
                     .collect(Collectors.toList());
             producto.getImagenes().addAll(imagenes);
         }
-
         ProductoEntity guardado = productoRepository.save(producto);
-        // Registrar precio inicial en historial
         historialPrecioService.registrarCambioPrecio(guardado.getIdProducto(), guardado.getPrecio());
         return mapearAResponseDTO(guardado);
     }
@@ -71,29 +59,31 @@ public class ProductoImpl implements ProductoService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductoResponseDTO> listarActivos() {
-        return productoRepository.findByActivoTrue()
-                .stream()
-                .map(this::mapearAResponseDTO)
-                .collect(Collectors.toList());
+        return productoRepository.findByActivoTrue().stream().map(this::mapearAResponseDTO).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public ProductoResponseDTO obtenerPorId(Long id) {
-        ProductoEntity producto = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+        ProductoEntity producto = productoRepository.findById(id).orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         return mapearAResponseDTO(producto);
     }
 
     @Override
     @Transactional
     public ProductoResponseDTO actualizar(Long id, ProductoRequestDTO dto) {
+        // Delegamos al nuevo método sin imágenes
+        return actualizarConImagenes(id, dto, null);
+    }
+
+    @Override
+    @Transactional
+    public ProductoResponseDTO actualizarConImagenes(Long id, ProductoRequestDTO dto, List<MultipartFile> nuevasImagenes) {
         ProductoEntity producto = productoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
                 .orElseThrow(() -> new RuntimeException("Categoría no existe"));
 
-        // Guardar precio anterior para comparar
         BigDecimal precioAnterior = producto.getPrecio();
 
         producto.setNombre(dto.getNombre());
@@ -103,26 +93,40 @@ public class ProductoImpl implements ProductoService {
         producto.setStock(dto.getStock());
         producto.setCategoria(categoria);
 
-        // Actualizar imágenes
-        producto.getImagenes().clear();
-        if (dto.getImagenesUrls() != null && !dto.getImagenesUrls().isEmpty()) {
-            List<ProductoImagen> nuevasImagenes = dto.getImagenesUrls().stream()
-                    .map(url -> ProductoImagen.builder()
-                            .imagenUrl(url)
+        // Manejo de imágenes: si vienen nuevas, reemplazar
+        if (nuevasImagenes != null && !nuevasImagenes.isEmpty()) {
+            // Opcional: eliminar imágenes antiguas de Cloudinary (no implementado aquí, pero se puede)
+            producto.getImagenes().clear();
+            for (MultipartFile img : nuevasImagenes) {
+                try {
+                    String urlPublica = cloudinaryService.subirImagen(img);
+                    ProductoImagen imagenEntity = ProductoImagen.builder()
+                            .imagenUrl(urlPublica)
                             .producto(producto)
-                            .esPrincipal(dto.getImagenesUrls().indexOf(url) == 0)
-                            .build())
-                    .collect(Collectors.toList());
-            producto.getImagenes().addAll(nuevasImagenes);
+                            .esPrincipal(producto.getImagenes().isEmpty())
+                            .build();
+                    producto.getImagenes().add(imagenEntity);
+                } catch (IOException e) {
+                    throw new RuntimeException("Error subiendo imagen a Cloudinary: " + e.getMessage());
+                }
+            }
+        } else if (dto.getImagenesUrls() != null && !dto.getImagenesUrls().isEmpty()) {
+            // Mantener las URLs existentes (caso de que no se suban nuevas)
+            producto.getImagenes().clear();
+            for (String url : dto.getImagenesUrls()) {
+                ProductoImagen imagenEntity = ProductoImagen.builder()
+                        .imagenUrl(url)
+                        .producto(producto)
+                        .esPrincipal(producto.getImagenes().isEmpty())
+                        .build();
+                producto.getImagenes().add(imagenEntity);
+            }
         }
 
         ProductoEntity actualizado = productoRepository.save(producto);
-
-        // Si el precio cambió, registrar en historial
         if (precioAnterior.compareTo(dto.getPrecio()) != 0) {
             historialPrecioService.registrarCambioPrecio(id, dto.getPrecio());
         }
-
         return mapearAResponseDTO(actualizado);
     }
 
@@ -138,9 +142,9 @@ public class ProductoImpl implements ProductoService {
     @Override
     @Transactional
     public ProductoResponseDTO crearConImagenes(ProductoRequestDTO dto, List<MultipartFile> imagenes) {
+        // Igual que ya tienes, sin cambios
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
                 .orElseThrow(() -> new RuntimeException("Categoría no existe"));
-
         ProductoEntity producto = ProductoEntity.builder()
                 .nombre(dto.getNombre())
                 .descripcion(dto.getDescripcion())
@@ -150,15 +154,11 @@ public class ProductoImpl implements ProductoService {
                 .categoria(categoria)
                 .activo(true)
                 .build();
-
         ProductoEntity productoGuardado = productoRepository.save(producto);
-
         if (imagenes != null && !imagenes.isEmpty()) {
             for (MultipartFile img : imagenes) {
                 try {
-                    // Subir a Cloudinary
                     String urlPublica = cloudinaryService.subirImagen(img);
-
                     ProductoImagen imagenEntity = ProductoImagen.builder()
                             .imagenUrl(urlPublica)
                             .producto(productoGuardado)
@@ -171,8 +171,6 @@ public class ProductoImpl implements ProductoService {
             }
             productoGuardado = productoRepository.save(productoGuardado);
         }
-
-        // Registrar precio inicial
         historialPrecioService.registrarCambioPrecio(productoGuardado.getIdProducto(), productoGuardado.getPrecio());
         return mapearAResponseDTO(productoGuardado);
     }
