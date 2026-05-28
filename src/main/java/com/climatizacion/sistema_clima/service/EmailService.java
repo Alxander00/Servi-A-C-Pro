@@ -23,8 +23,7 @@ public class EmailService {
             mailSender.send(message);
             System.out.println("✅ Correo enviado a " + destino);
         } catch (MessagingException e) {
-            System.err.println("❌ Error al enviar correo: " + e.getMessage());
-            throw new RuntimeException("Error al enviar correo: " + e.getMessage());
+            System.err.println("❌ Error al enviar correo a " + destino + ": " + e.getMessage());
         }
     }
 

@@ -74,7 +74,11 @@ public class UsuarioImpl implements UsuarioService {
             cliente.setActivo(true);
             clienteRepository.save(cliente);
 
-            emailService.enviarCorreoBienvenida(usuario.getEmail(), usuario.getNombres());
+            try {
+                emailService.enviarCorreoBienvenida(usuario.getEmail(), usuario.getNombres());
+            } catch (Exception e) {
+                System.err.println("⚠️ No se pudo enviar correo de bienvenida a " + usuario.getEmail() + " - " + e.getMessage());
+            }
         }
 
         return convertirADTO(usuarioGuardado);
