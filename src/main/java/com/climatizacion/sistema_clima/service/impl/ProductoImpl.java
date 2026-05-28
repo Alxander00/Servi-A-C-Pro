@@ -7,6 +7,7 @@ import com.climatizacion.sistema_clima.entities.ProductoEntity;
 import com.climatizacion.sistema_clima.entities.ProductoImagen;
 import com.climatizacion.sistema_clima.repository.CategoriaRepository;
 import com.climatizacion.sistema_clima.repository.ProductoRepository;
+import com.climatizacion.sistema_clima.service.CloudinaryService;
 import com.climatizacion.sistema_clima.service.HistorialPrecioService;
 import com.climatizacion.sistema_clima.service.ProductoService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class ProductoImpl implements ProductoService {
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
     private final HistorialPrecioService historialPrecioService;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
@@ -154,13 +156,9 @@ public class ProductoImpl implements ProductoService {
         if (imagenes != null && !imagenes.isEmpty()) {
             for (MultipartFile img : imagenes) {
                 try {
-                    Path uploadDir = Paths.get("uploads");
-                    if (!Files.exists(uploadDir)) Files.createDirectories(uploadDir);
-                    String nombreOriginal = img.getOriginalFilename();
-                    String nombreUnico = UUID.randomUUID().toString() + "_" + nombreOriginal;
-                    Path rutaCompleta = uploadDir.resolve(nombreUnico);
-                    Files.copy(img.getInputStream(), rutaCompleta, StandardCopyOption.REPLACE_EXISTING);
-                    String urlPublica = "/uploads/" + nombreUnico;
+                    // Subir a Cloudinary
+                    String urlPublica = cloudinaryService.subirImagen(img);
+
                     ProductoImagen imagenEntity = ProductoImagen.builder()
                             .imagenUrl(urlPublica)
                             .producto(productoGuardado)
@@ -168,7 +166,7 @@ public class ProductoImpl implements ProductoService {
                             .build();
                     productoGuardado.getImagenes().add(imagenEntity);
                 } catch (IOException e) {
-                    throw new RuntimeException("Error guardando imagen: " + e.getMessage());
+                    throw new RuntimeException("Error subiendo imagen a Cloudinary: " + e.getMessage());
                 }
             }
             productoGuardado = productoRepository.save(productoGuardado);
