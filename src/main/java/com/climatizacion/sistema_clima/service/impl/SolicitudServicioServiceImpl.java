@@ -44,15 +44,19 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                 .build();
         SolicitudServicioEntity saved = solicitudRepository.save(solicitud);
 
-        // Notificar al administrador (opcional, comentar si no hay correo real)
-        String asunto = "Nueva solicitud de servicio de " + cliente.getNombres() + " " + cliente.getApellidos();
-        String cuerpo = "<h2>Nueva solicitud de servicio</h2>" +
-                "<p><strong>Cliente:</strong> " + cliente.getNombres() + " " + cliente.getApellidos() + "</p>" +
-                "<p><strong>Tipo:</strong> " + request.getTipoServicio() + "</p>" +
-                "<p><strong>Fecha preferida:</strong> " + (request.getFechaPreferida() != null ? request.getFechaPreferida() : "No especificada") + "</p>" +
-                "<p><strong>Mensaje:</strong> " + (request.getMensaje() != null ? request.getMensaje() : "") + "</p>" +
-                "<p>Ingresa al panel de administración para asignar técnico.</p>";
-        emailService.enviarCorreo(adminEmail, asunto, cuerpo);
+        // Notificar al administrador (NO CRÍTICO)
+        try {
+            String asunto = "Nueva solicitud de servicio de " + cliente.getNombres() + " " + cliente.getApellidos();
+            String cuerpo = "<h2>Nueva solicitud de servicio</h2>" +
+                    "<p><strong>Cliente:</strong> " + cliente.getNombres() + " " + cliente.getApellidos() + "</p>" +
+                    "<p><strong>Tipo:</strong> " + request.getTipoServicio() + "</p>" +
+                    "<p><strong>Fecha preferida:</strong> " + (request.getFechaPreferida() != null ? request.getFechaPreferida() : "No especificada") + "</p>" +
+                    "<p><strong>Mensaje:</strong> " + (request.getMensaje() != null ? request.getMensaje() : "") + "</p>" +
+                    "<p>Ingresa al panel de administración para asignar técnico.</p>";
+            emailService.enviarCorreo(adminEmail, asunto, cuerpo);
+        } catch (Exception e) {
+            System.err.println("⚠️ No se pudo notificar al administrador sobre la solicitud #" + saved.getIdSolicitud() + " - " + e.getMessage());
+        }
 
         return mapToResponseDTO(saved);
     }
@@ -91,15 +95,19 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
         solicitud.setEstado("ASIGNADA");
         solicitudRepository.save(solicitud);
 
-        // Notificar al técnico
-        String fechaFormateada = fechaInicio.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-        emailService.enviarCorreoNuevaCita(
-                tecnico.getEmail(),
-                tecnico.getNombres() + " " + tecnico.getApellidos(),
-                solicitud.getCliente().getNombres() + " " + solicitud.getCliente().getApellidos(),
-                fechaFormateada,
-                solicitud.getCliente().getDireccionCompleta()
-        );
+        // Notificar al técnico (NO CRÍTICO)
+        try {
+            String fechaFormateada = fechaInicio.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            emailService.enviarCorreoNuevaCita(
+                    tecnico.getEmail(),
+                    tecnico.getNombres() + " " + tecnico.getApellidos(),
+                    solicitud.getCliente().getNombres() + " " + solicitud.getCliente().getApellidos(),
+                    fechaFormateada,
+                    solicitud.getCliente().getDireccionCompleta()
+            );
+        } catch (Exception e) {
+            System.err.println("⚠️ No se pudo notificar al técnico sobre la cita asociada a la solicitud #" + idSolicitud + " - " + e.getMessage());
+        }
     }
 
     @Override
