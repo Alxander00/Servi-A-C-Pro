@@ -27,8 +27,8 @@ public class PedidoServiceImpl implements PedidoService {
     private final PedidoRepository repository;
     private final ProductoRepository productoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
-    private final UsuarioRepository usuarioRepository;   // para obtener datos del cliente
-    private final EmailService emailService;           // para enviar correos
+    private final UsuarioRepository usuarioRepository;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -60,10 +60,15 @@ public class PedidoServiceImpl implements PedidoService {
             detallePedidoRepository.save(detalle);
         }
 
-        // ✅ NOTIFICAR AL CLIENTE QUE EL PEDIDO HA SIDO CREADO
-        UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedidoGuardado.getIdUsuario()))
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-        emailService.enviarCorreoPedidoCreado(usuario.getEmail(), usuario.getNombres(), pedidoGuardado.getIdPedido());
+        // Notificación por correo (NO CRÍTICA) – capturamos excepción para no revertir el pedido
+        try {
+            UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedidoGuardado.getIdUsuario()))
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            emailService.enviarCorreoPedidoCreado(usuario.getEmail(), usuario.getNombres(), pedidoGuardado.getIdPedido());
+        } catch (Exception e) {
+            System.err.println("⚠️ No se pudo enviar correo de confirmación de pedido #" + pedidoGuardado.getIdPedido() + " - " + e.getMessage());
+            // No lanzamos la excepción, la transacción sigue su curso
+        }
 
         return pedidoGuardado;
     }
@@ -101,14 +106,18 @@ public class PedidoServiceImpl implements PedidoService {
         pedido.setEstado(nuevoEstado);
         repository.save(pedido);
 
-        // ✅ NOTIFICAR AL CLIENTE EL CAMBIO DE ESTADO
-        UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedido.getIdUsuario()))
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-        emailService.enviarCorreoCambioEstadoPedido(usuario.getEmail(), usuario.getNombres(),
-                id, estadoAnterior, nuevoEstado);
+        // Notificación por correo (NO CRÍTICA)
+        try {
+            UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedido.getIdUsuario()))
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            emailService.enviarCorreoCambioEstadoPedido(usuario.getEmail(), usuario.getNombres(),
+                    id, estadoAnterior, nuevoEstado);
+        } catch (Exception e) {
+            System.err.println("⚠️ No se pudo enviar correo de cambio de estado del pedido #" + id + " - " + e.getMessage());
+            // No lanzamos la excepción
+        }
     }
 
-    // En PedidoServiceImpl
     @Override
     public long contarPedidosPorEstado(List<String> estados) {
         return repository.countByEstadoIn(estados);
