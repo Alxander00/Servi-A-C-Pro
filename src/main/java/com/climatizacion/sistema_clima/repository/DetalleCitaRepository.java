@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface DetalleCitaRepository extends JpaRepository<DetalleCitaEntity, Integer> {
-    List<DetalleCitaEntity> findByCita_IdCita(Integer idCita);
+public interface DetalleCitaRepository extends JpaRepository<DetalleCitaEntity, Long> {
+    List<DetalleCitaEntity> findByCita_IdCita(Long idCita);
 }

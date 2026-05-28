@@ -71,7 +71,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
 
     @Override
     @Transactional
-    public void asignarTecnico(Integer idSolicitud, Long idTecnico, LocalDateTime fechaInicio, LocalDateTime fechaFin) {
+    public void asignarTecnico(Long idSolicitud, Long idTecnico, LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         SolicitudServicioEntity solicitud = solicitudRepository.findById(idSolicitud)
                 .orElseThrow(() -> new RuntimeException("Solicitud no encontrada"));
         if (!"PENDIENTE".equals(solicitud.getEstado())) {
@@ -104,7 +104,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
 
     @Override
     @Transactional
-    public void rechazarSolicitud(Integer idSolicitud) {
+    public void rechazarSolicitud(Long idSolicitud) {
         SolicitudServicioEntity solicitud = solicitudRepository.findById(idSolicitud)
                 .orElseThrow(() -> new RuntimeException("Solicitud no encontrada"));
         solicitud.setEstado("RECHAZADA");

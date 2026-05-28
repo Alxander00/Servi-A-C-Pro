@@ -15,7 +15,7 @@ public class EquipoClienteEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_equipo")
-    private Integer idEquipo;
+    private Long idEquipo;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cliente", nullable = false)
@@ -28,7 +28,7 @@ public class EquipoClienteEntity {
     private String modelo;
 
     @Column(name = "capacidad_btu")
-    private Integer capacidadBtu;
+    private Long capacidadBtu;
 
     @Column(name = "ubicacion_en_casa", length = 100)
     private String ubicacionEnCasa;

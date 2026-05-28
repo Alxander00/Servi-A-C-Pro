@@ -5,7 +5,7 @@ import java.util.List;
 
 @Data
 public class PedidoRequestDTO {
-    private Integer idUsuario;
+    private Long idUsuario;
     private Double total;
     private Boolean incluyeInstalacion;
     private String direccion;

@@ -10,7 +10,7 @@ public class CitaRequestDTO {
     @NotNull(message = "El ID del cliente es obligatorio")
     private Long idCliente;
 
-    private Integer idPedido;
+    private Long idPedido;
 
     @NotNull(message = "El ID del técnico es obligatorio")
     private Long idTecnico;

@@ -79,23 +79,23 @@ public class PedidoServiceImpl implements PedidoService {
     }
 
     @Override
-    public PedidoEntity obtenerPorId(Integer id) {
+    public PedidoEntity obtenerPorId(Long id) {
         return repository.findById(id).orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
     }
 
     @Override
-    public void eliminar(Integer id) {
+    public void eliminar(Long id) {
         repository.deleteById(id);
     }
 
     @Override
-    public List<PedidoEntity> listarPorUsuario(Integer idUsuario) {
+    public List<PedidoEntity> listarPorUsuario(Long idUsuario) {
         return repository.findByIdUsuario(idUsuario);
     }
 
     @Override
     @Transactional
-    public void cambiarEstado(Integer id, String nuevoEstado) {
+    public void cambiarEstado(Long id, String nuevoEstado) {
         PedidoEntity pedido = obtenerPorId(id);
         String estadoAnterior = pedido.getEstado();
         pedido.setEstado(nuevoEstado);
@@ -115,7 +115,7 @@ public class PedidoServiceImpl implements PedidoService {
     }
 
     @Override
-    public long contarPedidosPorEstadoYUsuario(Integer idUsuario, List<String> estados) {
+    public long contarPedidosPorEstadoYUsuario(Long idUsuario, List<String> estados) {
         return repository.countByIdUsuarioAndEstadoIn(idUsuario, estados);
     }
 }

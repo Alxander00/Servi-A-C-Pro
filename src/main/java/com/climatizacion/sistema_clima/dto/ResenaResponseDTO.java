@@ -7,11 +7,11 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class ResenaResponseDTO {
-    private Integer id;
+    private Long id;
     private Long idProducto;
     private Long idUsuario;
     private String nombreUsuario;
-    private Integer calificacion;
+    private Long calificacion;
     private String comentario;
     private LocalDateTime fecha;
     private String estado;

@@ -29,7 +29,7 @@ public class DetalleCitaServiceImpl implements DetalleCitaService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<DetalleCitaResponseDTO> obtenerPorCita(Integer idCita) {
+    public List<DetalleCitaResponseDTO> obtenerPorCita(Long idCita) {
         return detalleCitaRepository.findByCita_IdCita(idCita).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
@@ -62,7 +62,7 @@ public class DetalleCitaServiceImpl implements DetalleCitaService {
 
     @Override
     @Transactional
-    public void eliminar(Integer idDetalleCita) {
+    public void eliminar(Long idDetalleCita) {
         detalleCitaRepository.deleteById(idDetalleCita);
     }
 

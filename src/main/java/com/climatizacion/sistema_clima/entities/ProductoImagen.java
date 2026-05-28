@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class ProductoImagen {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer idImagen;
+    private Long idImagen;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_producto", nullable = false)

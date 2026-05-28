@@ -14,7 +14,7 @@ public class EquipoClienteRequestDTO {
     private String marca;
 
     private String modelo;
-    private Integer capacidadBtu;
+    private Long capacidadBtu;
     private String ubicacionEnCasa;
     private LocalDate fechaInstalacion;
     private String notas;

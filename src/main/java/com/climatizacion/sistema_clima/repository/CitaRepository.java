@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface CitaRepository extends JpaRepository<CitaEntity, Integer> {
+public interface CitaRepository extends JpaRepository<CitaEntity, Long> {
     List<CitaEntity> findByTecnico_IdUsuario(Long idTecnico);
     List<CitaEntity> findByCliente_IdCliente(Long idCliente);
     long countByCliente_IdClienteAndEstadoIn(Long idCliente, List<EstadoCita> estados);

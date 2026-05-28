@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface EquipoClienteRepository extends JpaRepository<EquipoClienteEntity, Integer> {
+public interface EquipoClienteRepository extends JpaRepository<EquipoClienteEntity, Long> {
     List<EquipoClienteEntity> findByCliente_IdCliente(Long idCliente);
 }

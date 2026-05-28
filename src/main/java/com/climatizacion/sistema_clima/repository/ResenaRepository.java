@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface ResenaRepository extends JpaRepository<ResenaEntity, Integer> {
+public interface ResenaRepository extends JpaRepository<ResenaEntity, Long> {
     List<ResenaEntity> findByIdProductoAndEstadoOrderByFechaDesc(Long idProducto, String estado);
     Optional<ResenaEntity> findByIdProductoAndIdUsuario(Long idProducto, Long idUsuario);
 

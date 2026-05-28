@@ -8,12 +8,12 @@ import java.math.BigDecimal;
 @Data
 public class DetalleCitaRequestDTO {
     @NotNull(message = "El ID de la cita es obligatorio")
-    private Integer idCita;
+    private Long idCita;
 
     @NotNull(message = "El ID del servicio es obligatorio")
-    private Integer idServicio;
+    private Long idServicio;
 
-    private Integer idEquipo;
+    private Long idEquipo;
 
     @NotNull(message = "El precio cobrado es obligatorio")
     @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")

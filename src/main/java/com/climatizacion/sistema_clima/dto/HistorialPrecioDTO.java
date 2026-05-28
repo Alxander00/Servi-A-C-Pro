@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class HistorialPrecioDTO {
-    private Integer id;
+    private Long id;
     private Long idProducto;
     private BigDecimal precio;
     private LocalDateTime fechaCambio;

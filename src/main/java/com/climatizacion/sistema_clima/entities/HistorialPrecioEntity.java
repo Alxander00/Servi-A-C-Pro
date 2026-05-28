@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 public class HistorialPrecioEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @Column(name = "id_producto", nullable = false)
     private Long idProducto;

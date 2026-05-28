@@ -7,9 +7,9 @@ import java.math.BigDecimal;
 @Data
 public class DetallePedidoDTO {
 
-    private Integer idDetalle;
-    private Integer idPedido;
+    private Long idDetalle;
+    private Long idPedido;
     private Long idProducto;
-    private Integer cantidad;
+    private Long cantidad;
     private BigDecimal precioUnitario;
 }

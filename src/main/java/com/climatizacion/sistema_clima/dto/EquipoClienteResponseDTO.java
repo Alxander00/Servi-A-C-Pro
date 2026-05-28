@@ -7,12 +7,12 @@ import java.time.LocalDate;
 @Data
 @Builder
 public class EquipoClienteResponseDTO {
-    private Integer idEquipo;
+    private Long idEquipo;
     private Long idCliente;
     private String nombreCliente; // Para mostrar el nombre en el frontend
     private String marca;
     private String modelo;
-    private Integer capacidadBtu;
+    private Long capacidadBtu;
     private String ubicacionEnCasa;
     private LocalDate fechaInstalacion;
     private String notas;

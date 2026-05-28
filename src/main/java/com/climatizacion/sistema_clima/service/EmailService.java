@@ -39,7 +39,7 @@ public class EmailService {
         enviarCorreo(destino, asunto, cuerpo);
     }
 
-    public void enviarCorreoPedidoCreado(String destino, String nombre, Integer idPedido) {
+    public void enviarCorreoPedidoCreado(String destino, String nombre, Long idPedido) {
         String asunto = "Pedido #" + idPedido + " recibido";
         String cuerpo = "<h2>Hola " + nombre + ",</h2>" +
                 "<p>Hemos recibido tu pedido <strong>#" + idPedido + "</strong>. Pronto iniciaremos su procesamiento.</p>" +
@@ -48,7 +48,7 @@ public class EmailService {
         enviarCorreo(destino, asunto, cuerpo);
     }
 
-    public void enviarCorreoCambioEstadoPedido(String destino, String nombre, Integer idPedido, String estadoAnterior, String nuevoEstado) {
+    public void enviarCorreoCambioEstadoPedido(String destino, String nombre, Long idPedido, String estadoAnterior, String nuevoEstado) {
         String asunto = "Actualización de tu pedido #" + idPedido;
         String cuerpo = "<h2>Hola " + nombre + ",</h2>" +
                 "<p>Tu pedido <strong>#" + idPedido + "</strong> ha cambiado de estado:</p>" +
@@ -73,7 +73,7 @@ public class EmailService {
         enviarCorreo(destino, asunto, cuerpo);
     }
 
-    public void enviarCorreoCambioEstadoCita(String destino, String nombreCliente, Integer idCita, String nuevoEstado) {
+    public void enviarCorreoCambioEstadoCita(String destino, String nombreCliente, Long idCita, String nuevoEstado) {
         String asunto = "Actualización de tu cita #" + idCita;
         String cuerpo = "<h2>Hola " + nombreCliente + ",</h2>" +
                 "<p>Te informamos que el estado de tu cita <strong>#" + idCita + "</strong> ha cambiado.</p>" +

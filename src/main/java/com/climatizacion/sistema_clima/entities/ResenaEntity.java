@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class ResenaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @Column(name = "id_producto", nullable = false)
     private Long idProducto;
@@ -25,7 +25,7 @@ public class ResenaEntity {
     private Long idUsuario;
 
     @Column(nullable = false)
-    private Integer calificacion;
+    private Long calificacion;
 
     @Column(columnDefinition = "TEXT")
     private String comentario;

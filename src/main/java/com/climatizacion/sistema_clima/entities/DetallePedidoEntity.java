@@ -16,7 +16,7 @@ public class DetallePedidoEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer idDetalle;
+    private Long idDetalle;
 
 
     @ManyToOne
@@ -29,7 +29,7 @@ public class DetallePedidoEntity {
     private ProductoEntity producto;
 
     @Column(nullable = false)
-    private Integer cantidad;
+    private Long cantidad;
 
     @Column(name = "precio_unitario", nullable = false)
     private BigDecimal precioUnitario;

@@ -86,7 +86,7 @@ public class CitaServiceImpl implements CitaService {
 
     @Override
     @Transactional
-    public CitaResponseDTO actualizar(Integer id, CitaRequestDTO request) {
+    public CitaResponseDTO actualizar(Long id, CitaRequestDTO request) {
         CitaEntity cita = citaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
         cita.setFechaInicio(request.getFechaInicio());
@@ -98,7 +98,7 @@ public class CitaServiceImpl implements CitaService {
 
     @Override
     @Transactional
-    public void cambiarEstado(Integer id, String estado) {
+    public void cambiarEstado(Long id, String estado) {
         CitaEntity cita = citaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
         cita.setEstado(EstadoCita.valueOf(estado.toUpperCase()));

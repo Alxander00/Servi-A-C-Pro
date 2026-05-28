@@ -8,11 +8,11 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class CitaResponseDTO {
-    private Integer idCita;
+    private Long idCita;
     private Long idCliente;
     private String nombreCliente;
     private String direccionCliente;
-    private Integer idPedido;
+    private Long idPedido;
     private Long idTecnico;
     private String nombreTecnico;
     private LocalDateTime fechaInicio;

@@ -58,7 +58,7 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
 
     @Override
     @Transactional
-    public EquipoClienteResponseDTO actualizar(Integer id, EquipoClienteRequestDTO request) {
+    public EquipoClienteResponseDTO actualizar(Long id, EquipoClienteRequestDTO request) {
         EquipoClienteEntity equipo = equipoClienteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Equipo no encontrado"));
 
@@ -80,7 +80,7 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
 
     @Override
     @Transactional
-    public void eliminar(Integer id) {
+    public void eliminar(Long id) {
         equipoClienteRepository.deleteById(id);
     }
 

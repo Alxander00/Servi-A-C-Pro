@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface HistorialPrecioRepository extends JpaRepository<HistorialPrecioEntity, Integer> {
+public interface HistorialPrecioRepository extends JpaRepository<HistorialPrecioEntity, Long> {
     List<HistorialPrecioEntity> findByIdProductoOrderByFechaCambioAsc(Long idProducto);
 }

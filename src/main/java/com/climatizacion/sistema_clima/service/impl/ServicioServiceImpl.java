@@ -24,13 +24,13 @@ public class ServicioServiceImpl implements ServicioService {
     }
 
     @Override
-    public ServicioEntity obtenerPorId(Integer id) {
+    public ServicioEntity obtenerPorId(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
     }
 
     @Override
-    public void eliminar(Integer id) {
+    public void eliminar(Long id) {
         repository.deleteById(id);
     }
 }

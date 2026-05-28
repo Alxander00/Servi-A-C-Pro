@@ -13,7 +13,7 @@ public class ResenaRequestDTO {
 
     @NotNull
     @Min(1) @Max(5)
-    private Integer calificacion;
+    private Long calificacion;
 
     @NotBlank
     private String comentario;

@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class SolicitudResponseDTO {
-    private Integer idSolicitud;
+    private Long idSolicitud;
     private Long idCliente;
     private String nombreCliente;
     private String tipoServicio;

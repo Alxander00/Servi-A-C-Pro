@@ -15,11 +15,11 @@ public class PedidoEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer idPedido;
+    private Long idPedido;
 
     // ELIMINAMOS la relación con ClienteEntity y ponemos el ID directo
     @Column(name = "id_cliente", nullable = false)
-    private Integer idUsuario;
+    private Long idUsuario;
 
     @Column(name = "fecha_pedido")
     private LocalDateTime fechaPedido;
