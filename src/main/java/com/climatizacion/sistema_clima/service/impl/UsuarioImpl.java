@@ -9,7 +9,7 @@ import com.climatizacion.sistema_clima.enums.Rol;
 import com.climatizacion.sistema_clima.repository.ClienteRepository;
 import com.climatizacion.sistema_clima.repository.PasswordResetTokenRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
-import com.climatizacion.sistema_clima.service.EmailService;
+import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.GeocodingService;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class UsuarioImpl implements UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final ClienteRepository clienteRepository;
     private final PasswordResetTokenRepository tokenRepository;
-    private final EmailService emailService;
+    private final ResendEmailService resendEmailService;
     private final GeocodingService geocodingService;
 
     @Value("${frontend.url}")
@@ -75,7 +75,7 @@ public class UsuarioImpl implements UsuarioService {
             clienteRepository.save(cliente);
 
             try {
-                emailService.enviarCorreoBienvenida(usuario.getEmail(), usuario.getNombres());
+                resendEmailService.enviarCorreoBienvenida(usuario.getEmail(), usuario.getNombres());
             } catch (Exception e) {
                 System.err.println("⚠️ No se pudo enviar correo de bienvenida a " + usuario.getEmail() + " - " + e.getMessage());
             }
@@ -185,7 +185,7 @@ public class UsuarioImpl implements UsuarioService {
                 "<a href=\"" + resetLink + "\">" + resetLink + "</a>" +
                 "<p>Este enlace expira en 1 hora.</p>" +
                 "<p>Si no solicitaste este cambio, ignora este mensaje.</p>";
-        emailService.enviarCorreo(user.getEmail(), "Recuperación de contraseña - ClimaPro", cuerpo);
+        resendEmailService.enviarCorreo(user.getEmail(), "Recuperación de contraseña - ClimaPro", cuerpo);
     }
 
     @Override

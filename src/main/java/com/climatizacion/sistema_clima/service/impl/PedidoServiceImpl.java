@@ -10,7 +10,7 @@ import com.climatizacion.sistema_clima.repository.DetallePedidoRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.ProductoRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
-import com.climatizacion.sistema_clima.service.EmailService;
+import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.PedidoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ public class PedidoServiceImpl implements PedidoService {
     private final ProductoRepository productoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
     private final UsuarioRepository usuarioRepository;
-    private final EmailService emailService;
+    private final ResendEmailService resendEmailService;
 
     @Override
     @Transactional
@@ -64,7 +64,7 @@ public class PedidoServiceImpl implements PedidoService {
         try {
             UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedidoGuardado.getIdUsuario()))
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-            emailService.enviarCorreoPedidoCreado(usuario.getEmail(), usuario.getNombres(), pedidoGuardado.getIdPedido());
+            resendEmailService.enviarCorreoPedidoCreado(usuario.getEmail(), usuario.getNombres(), pedidoGuardado.getIdPedido());
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo enviar correo de confirmación de pedido #" + pedidoGuardado.getIdPedido() + " - " + e.getMessage());
             // No lanzamos la excepción, la transacción sigue su curso
@@ -109,7 +109,7 @@ public class PedidoServiceImpl implements PedidoService {
         try {
             UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedido.getIdUsuario()))
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-            emailService.enviarCorreoCambioEstadoPedido(usuario.getEmail(), usuario.getNombres(),
+            resendEmailService.enviarCorreoCambioEstadoPedido(usuario.getEmail(), usuario.getNombres(),
                     id, estadoAnterior, nuevoEstado);
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo enviar correo de cambio de estado del pedido #" + id + " - " + e.getMessage());

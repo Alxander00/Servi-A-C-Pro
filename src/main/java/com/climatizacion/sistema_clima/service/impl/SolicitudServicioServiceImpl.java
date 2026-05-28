@@ -5,7 +5,7 @@ import com.climatizacion.sistema_clima.dto.SolicitudResponseDTO;
 import com.climatizacion.sistema_clima.entities.*;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.repository.*;
-import com.climatizacion.sistema_clima.service.EmailService;
+import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.SolicitudServicioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +24,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     private final ClienteRepository clienteRepository;
     private final CitaRepository citaRepository;
     private final UsuarioRepository usuarioRepository;
-    private final EmailService emailService;
+    private final ResendEmailService resendEmailService;
 
     @Value("${admin.email:admin@climapro.com}")
     private String adminEmail;
@@ -53,7 +53,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                     "<p><strong>Fecha preferida:</strong> " + (request.getFechaPreferida() != null ? request.getFechaPreferida() : "No especificada") + "</p>" +
                     "<p><strong>Mensaje:</strong> " + (request.getMensaje() != null ? request.getMensaje() : "") + "</p>" +
                     "<p>Ingresa al panel de administración para asignar técnico.</p>";
-            emailService.enviarCorreo(adminEmail, asunto, cuerpo);
+            resendEmailService.enviarCorreo(adminEmail, asunto, cuerpo);
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo notificar al administrador sobre la solicitud #" + saved.getIdSolicitud() + " - " + e.getMessage());
         }
@@ -98,7 +98,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
         // Notificar al técnico (NO CRÍTICO)
         try {
             String fechaFormateada = fechaInicio.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-            emailService.enviarCorreoNuevaCita(
+            resendEmailService.enviarCorreoNuevaCita(
                     tecnico.getEmail(),
                     tecnico.getNombres() + " " + tecnico.getApellidos(),
                     solicitud.getCliente().getNombres() + " " + solicitud.getCliente().getApellidos(),

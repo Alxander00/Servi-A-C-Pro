@@ -12,7 +12,7 @@ import com.climatizacion.sistema_clima.repository.ClienteRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.CitaService;
-import com.climatizacion.sistema_clima.service.EmailService;
+import com.climatizacion.sistema_clima.service.ResendEmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +29,7 @@ public class CitaServiceImpl implements CitaService {
     private final ClienteRepository clienteRepository;
     private final PedidoRepository pedidoRepository;
     private final UsuarioRepository usuarioRepository;
-    private final EmailService emailService;   // para enviar correos
+    private final ResendEmailService resendEmailService;   // para enviar correos
 
     @Override
     @Transactional(readOnly = true)
@@ -73,7 +73,7 @@ public class CitaServiceImpl implements CitaService {
 
         // ✅ NOTIFICAR AL TÉCNICO POR CORREO
         String fechaFormateada = request.getFechaInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-        emailService.enviarCorreoNuevaCita(
+        resendEmailService.enviarCorreoNuevaCita(
                 tecnico.getEmail(),
                 tecnico.getNombres() + " " + tecnico.getApellidos(),
                 cliente.getNombres() + " " + cliente.getApellidos(),
