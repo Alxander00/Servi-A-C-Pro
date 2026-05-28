@@ -11,11 +11,11 @@ public interface PedidoService {
 
     PedidoEntity guardar(PedidoEntity pedido);
     List<PedidoEntity> listar();
-    PedidoEntity obtenerPorId(Integer id);
-    void eliminar(Integer id);
-    List<PedidoEntity> listarPorUsuario(Integer idUsuario);
-    void cambiarEstado(Integer id, String estado);
+    PedidoEntity obtenerPorId(Long id);
+    void eliminar(Long id);
+    List<PedidoEntity> listarPorUsuario(Long idUsuario);
+    void cambiarEstado(Long id, String estado);
 
     long contarPedidosPorEstado(List<String> estados);
-    long contarPedidosPorEstadoYUsuario(Integer idUsuario, List<String> estados);
+    long contarPedidosPorEstadoYUsuario(Long idUsuario, List<String> estados);
 }

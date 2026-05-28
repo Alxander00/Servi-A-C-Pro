@@ -8,6 +8,6 @@ public interface EquipoClienteService {
     List<EquipoClienteResponseDTO> obtenerTodos();
     List<EquipoClienteResponseDTO> obtenerPorCliente(Long idCliente);
     EquipoClienteResponseDTO crear(EquipoClienteRequestDTO request);
-    EquipoClienteResponseDTO actualizar(Integer id, EquipoClienteRequestDTO request);
-    void eliminar(Integer id);
+    EquipoClienteResponseDTO actualizar(Long id, EquipoClienteRequestDTO request);
+    void eliminar(Long id);
 }

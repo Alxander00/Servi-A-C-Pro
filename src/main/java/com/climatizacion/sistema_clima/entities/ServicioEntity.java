@@ -14,7 +14,7 @@ public class ServicioEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer idServicio;
+    private Long idServicio;
 
     @Column(nullable = false, length = 100)
     private String nombre;

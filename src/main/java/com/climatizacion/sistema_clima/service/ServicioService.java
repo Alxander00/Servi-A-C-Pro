@@ -6,6 +6,6 @@ import java.util.List;
 public interface ServicioService {
     ServicioEntity guardar(ServicioEntity servicio);
     List<ServicioEntity> listar();
-    ServicioEntity obtenerPorId(Integer id);
-    void eliminar(Integer id);
+    ServicioEntity obtenerPorId(Long id);
+    void eliminar(Long id);
 }

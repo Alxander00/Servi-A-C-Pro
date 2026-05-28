@@ -10,7 +10,7 @@ public interface SolicitudServicioService {
     SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request);
     List<SolicitudResponseDTO> listarSolicitudesPendientes();
     List<SolicitudResponseDTO> listarPorCliente(Long idCliente);
-    void asignarTecnico(Integer idSolicitud, Long idTecnico, LocalDateTime fechaInicio, LocalDateTime fechaFin);
-    void rechazarSolicitud(Integer idSolicitud);
+    void asignarTecnico(Long idSolicitud, Long idTecnico, LocalDateTime fechaInicio, LocalDateTime fechaFin);
+    void rechazarSolicitud(Long idSolicitud);
     long contarPendientes();
 }

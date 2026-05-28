@@ -15,7 +15,7 @@ public class DetalleCitaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_detalle_cita")
-    private Integer idDetalleCita;
+    private Long idDetalleCita;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cita", nullable = false)
