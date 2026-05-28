@@ -10,10 +10,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/productos")
@@ -38,6 +42,8 @@ public class ProductoController {
             @PathVariable Long id,
             @RequestPart("producto") @Valid ProductoRequestDTO dto,
             @RequestPart(value = "imagenes", required = false) List<MultipartFile> imagenes) {
+        System.out.println("📥 Recibiendo actualización de producto ID: " + id);
+        System.out.println("DTO: " + dto);
         ProductoResponseDTO response = productoService.actualizarConImagenes(id, dto, imagenes);
         return ResponseEntity.ok(response);
     }
@@ -72,5 +78,16 @@ public class ProductoController {
     @GetMapping("/{id}/historial-precios")
     public ResponseEntity<List<HistorialPrecioDTO>> obtenerHistorialPrecios(@PathVariable Long id) {
         return ResponseEntity.ok(historialPrecioService.obtenerHistorialPorProducto(id));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        return ResponseEntity.badRequest().body(errors);
     }
 }
