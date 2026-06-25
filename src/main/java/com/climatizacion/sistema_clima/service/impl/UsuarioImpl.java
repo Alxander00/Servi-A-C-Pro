@@ -34,6 +34,9 @@ public class UsuarioImpl implements UsuarioService {
     @Value("${frontend.url}")
     private String frontendUrl;
 
+    @Value("${resend.api.key}")
+    private String resendApiKey;
+
     @Override
     @Transactional
     public UsuarioDTO registrarUsuario(UsuarioDTO request) {
@@ -134,7 +137,12 @@ public class UsuarioImpl implements UsuarioService {
     @Transactional
     public void enviarLinkRecuperacion(String email) {
         UsuarioEntity user = usuarioRepository.findByEmail(email).orElse(null);
-        if (user == null) return;
+        if (user == null) {
+            System.out.println("⚠️ Usuario no encontrado: " + email);
+            return; // No revelamos si existe o no
+        }
+
+        // Eliminar tokens anteriores
         tokenRepository.deleteByUsuarioId(user.getIdUsuario());
 
         String token = UUID.randomUUID().toString();
@@ -152,7 +160,17 @@ public class UsuarioImpl implements UsuarioService {
                 "<a href=\"" + resetLink + "\">" + resetLink + "</a>" +
                 "<p>Este enlace expira en 1 hora.</p>" +
                 "<p>Si no solicitaste este cambio, ignora este mensaje.</p>";
-        resendEmailService.enviarCorreo(user.getEmail(), "Recuperación de contraseña - ClimaPro", cuerpo);
+
+        // 🔥 NUEVO: Si la clave es dummy, imprimir en consola
+        if ("dummy_key_for_local_development".equals(resendApiKey)) {
+            System.out.println("=========================================");
+            System.out.println("🔗 Enlace de recuperación (modo desarrollo):");
+            System.out.println(resetLink);
+            System.out.println("=========================================");
+        } else {
+            // En producción, enviar con Resend
+            resendEmailService.enviarCorreo(user.getEmail(), "Recuperación de contraseña - ClimaPro", cuerpo);
+        }
     }
 
     @Override
