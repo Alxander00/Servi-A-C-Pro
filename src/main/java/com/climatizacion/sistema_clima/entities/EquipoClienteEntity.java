@@ -18,8 +18,8 @@ public class EquipoClienteEntity {
     private Long idEquipo;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_cliente", nullable = false)
-    private ClienteEntity cliente;
+    @JoinColumn(name = "id_cliente", referencedColumnName = "id_usuario", nullable = false)
+    private UsuarioEntity cliente;
 
     @Column(nullable = false, length = 50)
     private String marca;

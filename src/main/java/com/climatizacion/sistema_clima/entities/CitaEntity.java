@@ -19,8 +19,8 @@ public class CitaEntity {
     private Long idCita;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_cliente", nullable = false)
-    private ClienteEntity cliente;
+    @JoinColumn(name = "id_cliente", referencedColumnName = "id_usuario", nullable = false)
+    private UsuarioEntity cliente;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pedido")

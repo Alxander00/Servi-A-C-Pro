@@ -21,9 +21,8 @@ import java.util.stream.Collectors;
 public class SolicitudServicioServiceImpl implements SolicitudServicioService {
 
     private final SolicitudServicioRepository solicitudRepository;
-    private final ClienteRepository clienteRepository;
     private final CitaRepository citaRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository; // Eliminamos ClienteRepository
     private final ResendEmailService resendEmailService;
 
     @Value("${admin.email:admin@climapro.com}")
@@ -32,8 +31,10 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     @Override
     @Transactional
     public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request) {
-        ClienteEntity cliente = clienteRepository.findById(request.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        // Cambiamos ClienteEntity por UsuarioEntity
+        UsuarioEntity cliente = usuarioRepository.findById(request.getIdCliente())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
         SolicitudServicioEntity solicitud = SolicitudServicioEntity.builder()
                 .cliente(cliente)
                 .tipoServicio(request.getTipoServicio())
@@ -69,7 +70,8 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
 
     @Override
     public List<SolicitudResponseDTO> listarPorCliente(Long idCliente) {
-        return solicitudRepository.findByCliente_IdCliente(idCliente)
+        // Actualizamos el método del repositorio
+        return solicitudRepository.findByCliente_IdUsuario(idCliente)
                 .stream().map(this::mapToResponseDTO).collect(Collectors.toList());
     }
 
@@ -103,7 +105,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                     tecnico.getNombres() + " " + tecnico.getApellidos(),
                     solicitud.getCliente().getNombres() + " " + solicitud.getCliente().getApellidos(),
                     fechaFormateada,
-                    solicitud.getCliente().getDireccionCompleta()
+                    solicitud.getCliente().getDireccion() // Actualizado a getDireccion()
             );
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo notificar al técnico sobre la cita asociada a la solicitud #" + idSolicitud + " - " + e.getMessage());
@@ -122,7 +124,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     private SolicitudResponseDTO mapToResponseDTO(SolicitudServicioEntity entity) {
         return SolicitudResponseDTO.builder()
                 .idSolicitud(entity.getIdSolicitud())
-                .idCliente(entity.getCliente().getIdCliente())
+                .idCliente(entity.getCliente().getIdUsuario()) // Actualizado a getIdUsuario()
                 .nombreCliente(entity.getCliente().getNombres() + " " + entity.getCliente().getApellidos())
                 .tipoServicio(entity.getTipoServicio())
                 .fechaPreferida(entity.getFechaPreferida())

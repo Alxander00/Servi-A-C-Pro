@@ -11,6 +11,6 @@ public interface SolicitudServicioRepository extends JpaRepository<SolicitudServ
     @Query("SELECT s FROM SolicitudServicioEntity s JOIN FETCH s.cliente WHERE s.estado = :estado ORDER BY s.fechaCreacion ASC")
     List<SolicitudServicioEntity> findByEstadoOrderByFechaCreacionAsc(@Param("estado") String estado);
 
-    List<SolicitudServicioEntity> findByCliente_IdCliente(Long idCliente);
+    List<SolicitudServicioEntity> findByCliente_IdUsuario(Long idCliente);
     long countByEstado(String estado);
 }

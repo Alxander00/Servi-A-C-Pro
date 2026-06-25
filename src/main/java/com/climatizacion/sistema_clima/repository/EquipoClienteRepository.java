@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface EquipoClienteRepository extends JpaRepository<EquipoClienteEntity, Long> {
-    List<EquipoClienteEntity> findByCliente_IdCliente(Long idCliente);
+    List<EquipoClienteEntity> findByCliente_IdUsuario(Long idCliente);
 }

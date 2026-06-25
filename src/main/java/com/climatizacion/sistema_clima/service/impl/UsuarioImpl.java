@@ -1,12 +1,9 @@
 package com.climatizacion.sistema_clima.service.impl;
 
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
-import com.climatizacion.sistema_clima.entities.ClienteEntity;
 import com.climatizacion.sistema_clima.entities.PasswordResetTokenEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
-import com.climatizacion.sistema_clima.enums.Genero;
 import com.climatizacion.sistema_clima.enums.Rol;
-import com.climatizacion.sistema_clima.repository.ClienteRepository;
 import com.climatizacion.sistema_clima.repository.PasswordResetTokenRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.ResendEmailService;
@@ -30,7 +27,6 @@ public class UsuarioImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ClienteRepository clienteRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final ResendEmailService resendEmailService;
     private final GeocodingService geocodingService;
@@ -57,30 +53,6 @@ public class UsuarioImpl implements UsuarioService {
                 .build();
 
         UsuarioEntity usuarioGuardado = usuarioRepository.save(usuario);
-
-        if (request.getRol() == Rol.CLIENTE) {
-            ClienteEntity cliente = new ClienteEntity();
-            cliente.setNombres(request.getNombre());
-            cliente.setApellidos(request.getApellido());
-            cliente.setDui(request.getDui());
-            cliente.setEmail(request.getEmail());
-            cliente.setPassword(usuario.getPassword());
-            cliente.setTelefono(request.getTelefono());
-            cliente.setFechaNacimiento(request.getFechaNacimiento());
-            if (request.getGenero() != null) {
-                cliente.setGenero(Genero.valueOf(request.getGenero()));
-            }
-            cliente.setDireccionCompleta(request.getDireccion() != null ? request.getDireccion() : "");
-            cliente.setActivo(true);
-            clienteRepository.save(cliente);
-
-            try {
-                resendEmailService.enviarCorreoBienvenida(usuario.getEmail(), usuario.getNombres());
-            } catch (Exception e) {
-                System.err.println("⚠️ No se pudo enviar correo de bienvenida a " + usuario.getEmail() + " - " + e.getMessage());
-            }
-        }
-
         return convertirADTO(usuarioGuardado);
     }
 
@@ -130,18 +102,13 @@ public class UsuarioImpl implements UsuarioService {
         usuarioExistente.setRol(request.getRol());
         usuarioExistente.setDireccion(request.getDireccion());
 
-        // Si es CLIENTE, actualizar también la dirección en la tabla clientes y geocodificar
-        if (request.getRol() == Rol.CLIENTE) {
-            clienteRepository.findById(idUsuario).ifPresent(cliente -> {
-                cliente.setDireccionCompleta(request.getDireccion());
-                // Geocodificar la nueva dirección y guardar coordenadas
-                double[] coords = geocodingService.geocode(request.getDireccion());
-                if (coords != null) {
-                    cliente.setLatitud(BigDecimal.valueOf(coords[0]));
-                    cliente.setLongitud(BigDecimal.valueOf(coords[1]));
-                }
-                clienteRepository.save(cliente);
-            });
+        // Geocodificar directo en el usuario si es cliente
+        if (request.getRol() == Rol.CLIENTE && request.getDireccion() != null) {
+            double[] coords = geocodingService.geocode(request.getDireccion());
+            if (coords != null) {
+                usuarioExistente.setLatitud(BigDecimal.valueOf(coords[0]));
+                usuarioExistente.setLongitud(BigDecimal.valueOf(coords[1]));
+            }
         }
 
         return convertirADTO(usuarioRepository.save(usuarioExistente));

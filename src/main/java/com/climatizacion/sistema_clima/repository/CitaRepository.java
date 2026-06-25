@@ -10,6 +10,6 @@ import java.util.List;
 @Repository
 public interface CitaRepository extends JpaRepository<CitaEntity, Long> {
     List<CitaEntity> findByTecnico_IdUsuario(Long idTecnico);
-    List<CitaEntity> findByCliente_IdCliente(Long idCliente);
-    long countByCliente_IdClienteAndEstadoIn(Long idCliente, List<EstadoCita> estados);
+    List<CitaEntity> findByCliente_IdUsuario(Long idCliente);
+    long countByCliente_IdUsuarioAndEstadoIn(Long idCliente, List<EstadoCita> estados);
 }

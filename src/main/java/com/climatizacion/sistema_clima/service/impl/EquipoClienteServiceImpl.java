@@ -2,10 +2,10 @@ package com.climatizacion.sistema_clima.service.impl;
 
 import com.climatizacion.sistema_clima.dto.EquipoClienteRequestDTO;
 import com.climatizacion.sistema_clima.dto.EquipoClienteResponseDTO;
-import com.climatizacion.sistema_clima.entities.ClienteEntity;
 import com.climatizacion.sistema_clima.entities.EquipoClienteEntity;
-import com.climatizacion.sistema_clima.repository.ClienteRepository;
+import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.repository.EquipoClienteRepository;
+import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.EquipoClienteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class EquipoClienteServiceImpl implements EquipoClienteService {
 
     private final EquipoClienteRepository equipoClienteRepository;
-    private final ClienteRepository clienteRepository;
+    private final UsuarioRepository usuarioRepository; // Reemplazamos ClienteRepository
 
     @Override
     @Transactional(readOnly = true)
@@ -32,7 +32,8 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
     @Override
     @Transactional(readOnly = true)
     public List<EquipoClienteResponseDTO> obtenerPorCliente(Long idCliente) {
-        return equipoClienteRepository.findByCliente_IdCliente(idCliente).stream()
+        // NOTA: Asegúrate de renombrar este método en tu EquipoClienteRepository a findByCliente_IdUsuario
+        return equipoClienteRepository.findByCliente_IdUsuario(idCliente).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -40,8 +41,8 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
     @Override
     @Transactional
     public EquipoClienteResponseDTO crear(EquipoClienteRequestDTO request) {
-        ClienteEntity cliente = clienteRepository.findById(request.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        UsuarioEntity cliente = usuarioRepository.findById(request.getIdCliente())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         EquipoClienteEntity equipo = EquipoClienteEntity.builder()
                 .cliente(cliente)
@@ -62,9 +63,9 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
         EquipoClienteEntity equipo = equipoClienteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Equipo no encontrado"));
 
-        if (!equipo.getCliente().getIdCliente().equals(request.getIdCliente())) {
-            ClienteEntity cliente = clienteRepository.findById(request.getIdCliente())
-                    .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        if (!equipo.getCliente().getIdUsuario().equals(request.getIdCliente())) {
+            UsuarioEntity cliente = usuarioRepository.findById(request.getIdCliente())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
             equipo.setCliente(cliente);
         }
 
@@ -87,7 +88,7 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
     private EquipoClienteResponseDTO mapToResponseDTO(EquipoClienteEntity entity) {
         return EquipoClienteResponseDTO.builder()
                 .idEquipo(entity.getIdEquipo())
-                .idCliente(entity.getCliente().getIdCliente())
+                .idCliente(entity.getCliente().getIdUsuario()) // Actualizado a getIdUsuario()
                 .nombreCliente(entity.getCliente().getNombres() + " " + entity.getCliente().getApellidos())
                 .marca(entity.getMarca())
                 .modelo(entity.getModelo())

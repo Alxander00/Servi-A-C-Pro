@@ -17,8 +17,8 @@ public class SolicitudServicioEntity {
     private Long idSolicitud;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_cliente", nullable = false)
-    private ClienteEntity cliente;
+    @JoinColumn(name = "id_cliente", referencedColumnName = "id_usuario", nullable = false)
+    private UsuarioEntity cliente;
 
     @Column(name = "tipo_servicio", nullable = false, length = 50)
     private String tipoServicio;
@@ -30,7 +30,7 @@ public class SolicitudServicioEntity {
     private String mensaje;
 
     @Column(nullable = false, length = 20)
-    private String estado; // PENDIENTE, ASIGNADA, RECHAZADA
+    private String estado;
 
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;

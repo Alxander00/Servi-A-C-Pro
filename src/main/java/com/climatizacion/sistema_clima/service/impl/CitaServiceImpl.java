@@ -3,12 +3,10 @@ package com.climatizacion.sistema_clima.service.impl;
 import com.climatizacion.sistema_clima.dto.CitaRequestDTO;
 import com.climatizacion.sistema_clima.dto.CitaResponseDTO;
 import com.climatizacion.sistema_clima.entities.CitaEntity;
-import com.climatizacion.sistema_clima.entities.ClienteEntity;
 import com.climatizacion.sistema_clima.entities.PedidoEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.repository.CitaRepository;
-import com.climatizacion.sistema_clima.repository.ClienteRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.CitaService;
@@ -26,10 +24,9 @@ import java.util.stream.Collectors;
 public class CitaServiceImpl implements CitaService {
 
     private final CitaRepository citaRepository;
-    private final ClienteRepository clienteRepository;
     private final PedidoRepository pedidoRepository;
     private final UsuarioRepository usuarioRepository;
-    private final ResendEmailService resendEmailService;   // para enviar correos
+    private final ResendEmailService resendEmailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -50,15 +47,19 @@ public class CitaServiceImpl implements CitaService {
     @Override
     @Transactional
     public CitaResponseDTO crear(CitaRequestDTO request) {
-        ClienteEntity cliente = clienteRepository.findById(request.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        // Ahora buscamos al cliente directamente en la tabla de usuarios
+        UsuarioEntity cliente = usuarioRepository.findById(request.getIdCliente())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
         UsuarioEntity tecnico = usuarioRepository.findById(request.getIdTecnico())
                 .orElseThrow(() -> new RuntimeException("Técnico no encontrado"));
+
         PedidoEntity pedido = null;
         if (request.getIdPedido() != null) {
             pedido = pedidoRepository.findById(request.getIdPedido())
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
         }
+
         CitaEntity cita = CitaEntity.builder()
                 .cliente(cliente)
                 .pedido(pedido)
@@ -78,7 +79,7 @@ public class CitaServiceImpl implements CitaService {
                 tecnico.getNombres() + " " + tecnico.getApellidos(),
                 cliente.getNombres() + " " + cliente.getApellidos(),
                 fechaFormateada,
-                cliente.getDireccionCompleta()
+                cliente.getDireccion() // Actualizado al nuevo campo de UsuarioEntity
         );
 
         return mapToResponseDTO(citaGuardada);
@@ -108,9 +109,9 @@ public class CitaServiceImpl implements CitaService {
     private CitaResponseDTO mapToResponseDTO(CitaEntity entity) {
         return CitaResponseDTO.builder()
                 .idCita(entity.getIdCita())
-                .idCliente(entity.getCliente().getIdCliente())
+                .idCliente(entity.getCliente().getIdUsuario()) // Actualizado a getIdUsuario()
                 .nombreCliente(entity.getCliente().getNombres() + " " + entity.getCliente().getApellidos())
-                .direccionCliente(entity.getCliente().getDireccionCompleta())
+                .direccionCliente(entity.getCliente().getDireccion()) // Actualizado al campo de UsuarioEntity
                 .idPedido(entity.getPedido() != null ? entity.getPedido().getIdPedido() : null)
                 .idTecnico(entity.getTecnico().getIdUsuario())
                 .nombreTecnico(entity.getTecnico().getNombres() + " " + entity.getTecnico().getApellidos())
@@ -123,13 +124,15 @@ public class CitaServiceImpl implements CitaService {
 
     @Override
     public List<CitaResponseDTO> obtenerPorCliente(Long idCliente) {
-        return citaRepository.findByCliente_IdCliente(idCliente).stream()
+        // NOTA: Asegúrate de renombrar este método en tu CitaRepository a findByCliente_IdUsuario
+        return citaRepository.findByCliente_IdUsuario(idCliente).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     public long contarCitasPorClienteYEstados(Long idCliente, List<EstadoCita> estados) {
-        return citaRepository.countByCliente_IdClienteAndEstadoIn(idCliente, estados);
+        // NOTA: Asegúrate de renombrar este método en tu CitaRepository a countByCliente_IdUsuarioAndEstadoIn
+        return citaRepository.countByCliente_IdUsuarioAndEstadoIn(idCliente, estados);
     }
 }

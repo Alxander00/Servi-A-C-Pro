@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -65,6 +66,12 @@ public class UsuarioEntity {
 
     @Column(name = "direccion")
     private String direccion;
+
+    @Column(precision = 10, scale = 8)
+    private BigDecimal latitud;
+
+    @Column(precision = 11, scale = 8)
+    private BigDecimal longitud;
 
     @PrePersist
     protected void onCreate() {
