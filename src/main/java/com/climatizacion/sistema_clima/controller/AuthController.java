@@ -1,7 +1,7 @@
 package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
-import com.climatizacion.sistema_clima.security.JwtUtil;
+import com.climatizacion.sistema_clima.security.JwtUtil;  // ✅ Importación correcta
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ public class AuthController {
 
     private final UsuarioService usuarioService;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;  // ✅ Inyectado por constructor
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> creds) {
