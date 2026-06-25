@@ -11,6 +11,8 @@ import com.climatizacion.sistema_clima.service.CloudinaryService;
 import com.climatizacion.sistema_clima.service.HistorialPrecioService;
 import com.climatizacion.sistema_clima.service.ProductoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -58,8 +60,9 @@ public class ProductoImpl implements ProductoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductoResponseDTO> listarActivos() {
-        return productoRepository.findByActivoTrue().stream().map(this::mapearAResponseDTO).collect(Collectors.toList());
+    public Page<ProductoResponseDTO> listarActivos(Pageable pageable) {
+        return productoRepository.findByActivoTrue(pageable)
+                .map(this::mapearAResponseDTO);
     }
 
     @Override

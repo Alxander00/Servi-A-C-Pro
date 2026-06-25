@@ -14,6 +14,7 @@ import com.climatizacion.sistema_clima.service.ResendEmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -27,6 +28,7 @@ public class CitaServiceImpl implements CitaService {
     private final PedidoRepository pedidoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ResendEmailService resendEmailService;
+    private final com.climatizacion.sistema_clima.service.CloudinaryService cloudinaryService;
 
     @Override
     @Transactional(readOnly = true)
@@ -109,9 +111,9 @@ public class CitaServiceImpl implements CitaService {
     private CitaResponseDTO mapToResponseDTO(CitaEntity entity) {
         return CitaResponseDTO.builder()
                 .idCita(entity.getIdCita())
-                .idCliente(entity.getCliente().getIdUsuario()) // Actualizado a getIdUsuario()
+                .idCliente(entity.getCliente().getIdUsuario())
                 .nombreCliente(entity.getCliente().getNombres() + " " + entity.getCliente().getApellidos())
-                .direccionCliente(entity.getCliente().getDireccion()) // Actualizado al campo de UsuarioEntity
+                .direccionCliente(entity.getCliente().getDireccion())
                 .idPedido(entity.getPedido() != null ? entity.getPedido().getIdPedido() : null)
                 .idTecnico(entity.getTecnico().getIdUsuario())
                 .nombreTecnico(entity.getTecnico().getNombres() + " " + entity.getTecnico().getApellidos())
@@ -119,6 +121,9 @@ public class CitaServiceImpl implements CitaService {
                 .fechaFin(entity.getFechaFin())
                 .estado(entity.getEstado())
                 .notas(entity.getNotas())
+                .urlsFotosAntes(entity.getUrlsFotosAntes())
+                .urlsFotosDespues(entity.getUrlsFotosDespues())
+                .urlFirmaCliente(entity.getUrlFirmaCliente())
                 .build();
     }
 
@@ -134,5 +139,41 @@ public class CitaServiceImpl implements CitaService {
     public long contarCitasPorClienteYEstados(Long idCliente, List<EstadoCita> estados) {
         // NOTA: Asegúrate de renombrar este método en tu CitaRepository a countByCliente_IdUsuarioAndEstadoIn
         return citaRepository.countByCliente_IdUsuarioAndEstadoIn(idCliente, estados);
+    }
+
+    @Override
+    @Transactional
+    public CitaResponseDTO guardarReporte(Long idCita, String estado, String notas, List<MultipartFile> fotosAntes, List<MultipartFile> fotosDespues, String firmaBase64) {
+        CitaEntity cita = citaRepository.findById(idCita)
+                .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+
+        cita.setEstado(EstadoCita.valueOf(estado.toUpperCase()));
+        if (notas != null) cita.setNotas(notas);
+
+        try {
+            // 1. Subir fotos de ANTES
+            if (fotosAntes != null && !fotosAntes.isEmpty()) {
+                List<String> urlsAntes = new java.util.ArrayList<>();
+                for (MultipartFile file : fotosAntes) urlsAntes.add(cloudinaryService.subirImagen(file));
+                cita.setUrlsFotosAntes(String.join(",", urlsAntes));
+            }
+
+            // 2. Subir fotos de DESPUÉS
+            if (fotosDespues != null && !fotosDespues.isEmpty()) {
+                List<String> urlsDespues = new java.util.ArrayList<>();
+                for (MultipartFile file : fotosDespues) urlsDespues.add(cloudinaryService.subirImagen(file));
+                cita.setUrlsFotosDespues(String.join(",", urlsDespues));
+            }
+
+            // 3. Subir la FIRMA (Viene en Base64)
+            if (firmaBase64 != null && !firmaBase64.isEmpty()) {
+                String firmaUrl = cloudinaryService.subirImagenBase64(firmaBase64);
+                cita.setUrlFirmaCliente(firmaUrl);
+            }
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Error al subir evidencias a Cloudinary: " + e.getMessage());
+        }
+
+        return mapToResponseDTO(citaRepository.save(cita));
     }
 }

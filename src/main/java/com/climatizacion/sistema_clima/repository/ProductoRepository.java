@@ -1,6 +1,8 @@
 package com.climatizacion.sistema_clima.repository;
 
 import com.climatizacion.sistema_clima.entities.ProductoEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -10,7 +12,7 @@ import java.util.List;
 @Repository
 public interface ProductoRepository extends JpaRepository<ProductoEntity, Long> {
 
-    List<ProductoEntity> findByActivoTrue();
+    Page<ProductoEntity> findByActivoTrue(Pageable pageable);
 
     List<ProductoEntity> findByCategoria_IdCategoria(Long idCategoria);
 

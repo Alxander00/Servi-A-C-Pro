@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -53,5 +54,18 @@ public class CitaController {
     @GetMapping("/conteos/pendientes/cliente/{idCliente}")
     public ResponseEntity<Long> contarCitasPendientesCliente(@PathVariable Long idCliente) {
         return ResponseEntity.ok(citaService.contarCitasPorClienteYEstados(idCliente, List.of(EstadoCita.PROGRAMADA, EstadoCita.EN_PROCESO)));
+    }
+
+    // Importa org.springframework.web.multipart.MultipartFile;
+    @PostMapping(value = "/{id}/reporte", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CitaResponseDTO> guardarReporte(
+            @PathVariable Long id,
+            @RequestParam String estado,
+            @RequestParam(required = false) String notas,
+            @RequestPart(value = "fotosAntes", required = false) List<MultipartFile> fotosAntes,
+            @RequestPart(value = "fotosDespues", required = false) List<MultipartFile> fotosDespues,
+            @RequestParam(required = false) String firma) {
+
+        return ResponseEntity.ok(citaService.guardarReporte(id, estado, notas, fotosAntes, fotosDespues, firma));
     }
 }

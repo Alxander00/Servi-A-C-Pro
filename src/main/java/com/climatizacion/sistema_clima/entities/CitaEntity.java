@@ -43,6 +43,15 @@ public class CitaEntity {
     @Column(length = 255)
     private String notas;
 
+    @Column(name = "urls_fotos_antes", columnDefinition = "TEXT")
+    private String urlsFotosAntes;
+
+    @Column(name = "urls_fotos_despues", columnDefinition = "TEXT")
+    private String urlsFotosDespues;
+
+    @Column(name = "url_firma_cliente", columnDefinition = "TEXT")
+    private String urlFirmaCliente;
+
     @PrePersist
     public void prePersist() {
         if (this.estado == null) {

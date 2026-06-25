@@ -26,4 +26,10 @@ public class CloudinaryService {
         Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
         return uploadResult.get("secure_url").toString();
     }
+
+    public String subirImagenBase64(String base64String) throws IOException {
+        // Cloudinary puede subir imágenes directamente desde una cadena Data URI de Base64
+        Map<?, ?> uploadResult = cloudinary.uploader().upload(base64String, ObjectUtils.emptyMap());
+        return uploadResult.get("secure_url").toString();
+    }
 }

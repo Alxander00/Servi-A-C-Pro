@@ -19,4 +19,7 @@ public class CitaResponseDTO {
     private LocalDateTime fechaFin;
     private EstadoCita estado;
     private String notas;
+    private String urlsFotosAntes;
+    private String urlsFotosDespues;
+    private String urlFirmaCliente;
 }
