@@ -1,13 +1,14 @@
 package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
+import com.climatizacion.sistema_clima.security.JwtUtil;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -17,30 +18,36 @@ public class AuthController {
 
     private final UsuarioService usuarioService;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;  // ✅ Inyectado por constructor
 
-    // ========== LOGIN ==========
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> creds) {
         String email = creds.get("email");
         String password = creds.get("password");
-        System.out.println("🔐 Email: " + email);
-        System.out.println("🔐 Password recibida: [" + password + "]"); // ver si hay espacios
+
         try {
             UsuarioDTO user = usuarioService.buscarPorEmail(email);
             if (user == null || !user.getActivo()) {
-                System.out.println("❌ Usuario no encontrado o inactivo");
                 return ResponseEntity.status(401).body(Map.of("message", "Usuario no existe o está inactivo"));
             }
-            System.out.println("✅ Hash almacenado en DTO: " + user.getPassword());
+
             boolean matches = passwordEncoder.matches(password, user.getPassword());
-            System.out.println("🔍 ¿Coinciden? " + matches);
             if (!matches) {
                 return ResponseEntity.status(401).body(Map.of("message", "Contraseña incorrecta"));
             }
+
+            // ✅ GENERAR EL TOKEN
+            String token = jwtUtil.generateToken(user.getEmail(), user.getRol().name());
+            System.out.println("🔑 Token generado: " + token); // Para ver en logs
+
             user.setPassword(null);
-            return ResponseEntity.ok(user);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
+            response.put("user", user);
+
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            System.err.println("❌ Error: " + e.getMessage());
             return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
         }
     }
@@ -51,10 +58,8 @@ public class AuthController {
         String email = request.get("email");
         try {
             usuarioService.enviarLinkRecuperacion(email);
-            // Siempre devolvemos el mismo mensaje por seguridad (no revelamos si el email existe)
             return ResponseEntity.ok(Map.of("message", "Si el correo existe, recibirás un enlace de recuperación."));
         } catch (RuntimeException e) {
-            // También ocultamos el error real
             return ResponseEntity.ok(Map.of("message", "Si el correo existe, recibirás un enlace de recuperación."));
         }
     }
@@ -73,7 +78,7 @@ public class AuthController {
 
     @GetMapping("/generate-hash")
     public ResponseEntity<?> generateHash(@RequestParam String password) {
-        String hash = new BCryptPasswordEncoder().encode(password);
+        String hash = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password);
         return ResponseEntity.ok(Map.of("password", password, "hash", hash));
     }
 }

@@ -15,5 +15,6 @@ public class EquipoClienteResponseDTO {
     private Long capacidadBtu;
     private String ubicacionEnCasa;
     private LocalDate fechaInstalacion;
+    private LocalDate fechaUltimoMantenimiento;
     private String notas;
 }

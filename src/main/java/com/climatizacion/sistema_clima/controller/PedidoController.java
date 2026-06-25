@@ -22,7 +22,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/pedidos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class PedidoController {
 
     private final PedidoService service;

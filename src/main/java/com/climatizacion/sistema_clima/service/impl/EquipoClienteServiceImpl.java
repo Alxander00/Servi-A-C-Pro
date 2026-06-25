@@ -94,7 +94,8 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
                 .modelo(entity.getModelo())
                 .capacidadBtu(entity.getCapacidadBtu())
                 .ubicacionEnCasa(entity.getUbicacionEnCasa())
-                .fechaInstalacion(entity.getFechaInstalacion())
+                .fechaInstalacion(entity.getFechaInstalacion()).
+                fechaUltimoMantenimiento(entity.getFechaUltimoMantenimiento())
                 .notas(entity.getNotas())
                 .build();
     }

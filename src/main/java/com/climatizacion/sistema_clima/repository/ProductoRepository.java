@@ -4,7 +4,9 @@ import com.climatizacion.sistema_clima.entities.ProductoEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -21,4 +23,8 @@ public interface ProductoRepository extends JpaRepository<ProductoEntity, Long> 
             "LEFT JOIN PedidoEntity ped ON dp.pedido = ped AND ped.estado = 'Completado' " +
             "WHERE p.activo = true GROUP BY p.idProducto ORDER BY vendido DESC")
     List<Object[]> findProductosConVentas();
+
+    @Modifying
+    @Query("UPDATE ProductoEntity p SET p.stock = p.stock - :cantidad WHERE p.idProducto = :id AND p.stock >= :cantidad")
+    int descontarStock(@Param("id") Long id, @Param("cantidad") Long cantidad);
 }

@@ -25,7 +25,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/productos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ProductoController {
 
     private final ProductoService productoService;

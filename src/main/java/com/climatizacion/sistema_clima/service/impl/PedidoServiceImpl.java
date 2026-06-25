@@ -46,9 +46,13 @@ public class PedidoServiceImpl implements PedidoService {
         for (DetallePedidoRequestDTO item : dto.getItems()) {
             ProductoEntity producto = productoRepository.findById(item.getIdProducto())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-            if (producto.getStock() < item.getCantidad()) {
+
+            // Descontar stock de forma atómica
+            int rowsUpdated = productoRepository.descontarStock(item.getIdProducto(), item.getCantidad());
+            if (rowsUpdated == 0) {
                 throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
             }
+
             producto.setStock(producto.getStock() - item.getCantidad());
             productoRepository.save(producto);
 

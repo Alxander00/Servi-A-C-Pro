@@ -36,6 +36,9 @@ public class EquipoClienteEntity {
     @Column(name = "fecha_instalacion")
     private LocalDate fechaInstalacion;
 
+    @Column(name = "fecha_ultimo_mantenimiento")
+    private LocalDate fechaUltimoMantenimiento;
+
     @Column(columnDefinition = "TEXT")
     private String notas;
 }
