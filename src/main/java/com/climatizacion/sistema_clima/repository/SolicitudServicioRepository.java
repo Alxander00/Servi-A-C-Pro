@@ -13,4 +13,5 @@ public interface SolicitudServicioRepository extends JpaRepository<SolicitudServ
 
     List<SolicitudServicioEntity> findByCliente_IdUsuario(Long idCliente);
     long countByEstado(String estado);
+    long countByCliente_IdUsuarioAndEstado(Long idCliente, String estado);
 }

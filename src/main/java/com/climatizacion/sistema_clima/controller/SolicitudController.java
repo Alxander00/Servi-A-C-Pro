@@ -55,4 +55,10 @@ public class SolicitudController {
     public ResponseEntity<Long> contarSolicitudesPendientes() {
         return ResponseEntity.ok(solicitudService.contarPendientes());
     }
+
+    @GetMapping("/conteos/pendientes/cliente/{idCliente}")
+    public ResponseEntity<Long> contarSolicitudesPendientesPorCliente(@PathVariable Long idCliente) {
+        // Asegúrate de que el nombre del método en solicitudService coincida con el que tengas en tu interfaz.
+        return ResponseEntity.ok(solicitudService.contarPendientesPorCliente(idCliente));
+    }
 }

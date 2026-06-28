@@ -13,4 +13,5 @@ public interface SolicitudServicioService {
     void asignarTecnico(Long idSolicitud, Long idTecnico, LocalDateTime fechaInicio, LocalDateTime fechaFin);
     void rechazarSolicitud(Long idSolicitud);
     long contarPendientes();
+    long contarPendientesPorCliente(Long idCliente);
 }

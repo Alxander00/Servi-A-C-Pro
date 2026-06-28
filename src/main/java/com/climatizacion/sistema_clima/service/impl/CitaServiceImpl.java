@@ -128,8 +128,8 @@ public class CitaServiceImpl implements CitaService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CitaResponseDTO> obtenerPorCliente(Long idCliente) {
-        // NOTA: Asegúrate de renombrar este método en tu CitaRepository a findByCliente_IdUsuario
         return citaRepository.findByCliente_IdUsuario(idCliente).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());

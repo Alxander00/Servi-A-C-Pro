@@ -69,8 +69,8 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<SolicitudResponseDTO> listarPorCliente(Long idCliente) {
-        // Actualizamos el método del repositorio
         return solicitudRepository.findByCliente_IdUsuario(idCliente)
                 .stream().map(this::mapToResponseDTO).collect(Collectors.toList());
     }
@@ -137,5 +137,10 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     @Override
     public long contarPendientes() {
         return solicitudRepository.countByEstado("PENDIENTE");
+    }
+
+    @Override
+    public long contarPendientesPorCliente(Long idCliente) {
+        return solicitudRepository.countByCliente_IdUsuarioAndEstado(idCliente, "PENDIENTE");
     }
 }
