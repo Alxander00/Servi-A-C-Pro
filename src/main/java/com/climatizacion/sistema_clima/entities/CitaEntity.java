@@ -4,6 +4,8 @@ import com.climatizacion.sistema_clima.enums.EstadoCita;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "citas")
@@ -51,6 +53,9 @@ public class CitaEntity {
 
     @Column(name = "url_firma_cliente", columnDefinition = "TEXT")
     private String urlFirmaCliente;
+
+    @OneToMany(mappedBy = "cita", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UsoRepuestoEntity> repuestosUtilizados = new ArrayList<>();
 
     @PrePersist
     public void prePersist() {

@@ -2,8 +2,12 @@ package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.CitaRequestDTO;
 import com.climatizacion.sistema_clima.dto.CitaResponseDTO;
+import com.climatizacion.sistema_clima.dto.RepuestoUsadoDTO;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.service.CitaService;
+import com.climatizacion.sistema_clima.service.RepuestoService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +23,7 @@ import java.util.List;
 public class CitaController {
 
     private final CitaService citaService;
+    private final RepuestoService repuestoService;
 
     @GetMapping
     public ResponseEntity<List<CitaResponseDTO>> listarTodas() {
@@ -56,16 +61,31 @@ public class CitaController {
         return ResponseEntity.ok(citaService.contarCitasPorClienteYEstados(idCliente, List.of(EstadoCita.PROGRAMADA, EstadoCita.EN_PROCESO)));
     }
 
-    // Importa org.springframework.web.multipart.MultipartFile;
-    @PostMapping(value = "/{id}/reporte", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<CitaResponseDTO> guardarReporte(
+    @PostMapping("/{id}/reporte")
+    public ResponseEntity<Void> guardarReporte(
             @PathVariable Long id,
-            @RequestParam String estado,
-            @RequestParam(required = false) String notas,
-            @RequestPart(value = "fotosAntes", required = false) List<MultipartFile> fotosAntes,
-            @RequestPart(value = "fotosDespues", required = false) List<MultipartFile> fotosDespues,
-            @RequestParam(required = false) String firma) {
+            @RequestParam("estado") String estado,
+            @RequestParam(value = "notas", required = false) String notas,
+            @RequestParam(value = "fotosAntes", required = false) List<MultipartFile> fotosAntes,
+            @RequestParam(value = "fotosDespues", required = false) List<MultipartFile> fotosDespues,
+            @RequestParam(value = "firma", required = false) String firmaBase64,
+            // 👇 NUEVO PARÁMETRO PARA LOS REPUESTOS 👇
+            @RequestParam(value = "repuestos", required = false) String repuestosJson) {
 
-        return ResponseEntity.ok(citaService.guardarReporte(id, estado, notas, fotosAntes, fotosDespues, firma));
+        // 1. Guardar el estado, notas, fotos y firma (Tu código actual que ya funciona)
+        citaService.guardarReporteTecnico(id, estado, notas, fotosAntes, fotosDespues, firmaBase64);
+
+        // 2. 👇 NUEVA LÓGICA: Procesar repuestos si el técnico envió alguno 👇
+        if (repuestosJson != null && !repuestosJson.isEmpty() && !repuestosJson.equals("[]")) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                List<RepuestoUsadoDTO> repuestosUsados = mapper.readValue(repuestosJson, new TypeReference<List<RepuestoUsadoDTO>>(){});
+                repuestoService.registrarUsoYDescontarStock(id, repuestosUsados);
+            } catch (Exception e) {
+                throw new RuntimeException("Error al procesar los repuestos utilizados: " + e.getMessage());
+            }
+        }
+
+        return ResponseEntity.noContent().build();
     }
 }

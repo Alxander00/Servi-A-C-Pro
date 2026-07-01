@@ -15,5 +15,5 @@ public interface CitaService {
     void cambiarEstado(Long id, String estado);
     List<CitaResponseDTO> obtenerPorCliente(Long idCliente);
     long contarCitasPorClienteYEstados(Long idCliente, List<EstadoCita> estados);
-    CitaResponseDTO guardarReporte(Long idCita, String estado, String notas, List<MultipartFile> fotosAntes, List<MultipartFile> fotosDespues, String firmaBase64);
+    CitaResponseDTO guardarReporteTecnico(Long idCita, String estado, String notas, List<MultipartFile> fotosAntes, List<MultipartFile> fotosDespues, String firmaBase64);
 }
