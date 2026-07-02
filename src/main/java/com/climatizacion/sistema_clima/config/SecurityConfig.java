@@ -41,8 +41,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/solicitudes/**").permitAll()
                         .requestMatchers("/api/equipos-cliente/**").permitAll()
                         .requestMatchers("/api/citas/**").permitAll()
-                        // 👇 AQUÍ ESTÁ LA RUTA QUE FALTABA 👇
-                        .requestMatchers("/api/repuestos/**").permitAll()
+
+                        .requestMatchers("/api/repuestos/**").hasAnyAuthority("ADMIN", "TECNICO")
 
                         .anyRequest().authenticated()
                 )
