@@ -10,4 +10,5 @@ public interface CategoriaService {
     List<CategoriaResponseDTO> obtenerTodas();
     CategoriaResponseDTO obtenerPorId(Long id);
     void eliminarCategoria(Long id);
+    CategoriaResponseDTO actualizarCategoria(Long id, CategoriaRequestDTO request);
 }

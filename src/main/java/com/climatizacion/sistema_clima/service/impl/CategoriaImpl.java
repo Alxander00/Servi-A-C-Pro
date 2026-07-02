@@ -7,6 +7,7 @@ import com.climatizacion.sistema_clima.repository.CategoriaRepository;
 import com.climatizacion.sistema_clima.service.CategoriaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -52,6 +53,28 @@ public class CategoriaImpl implements CategoriaService {
     @Override
     public void eliminarCategoria(Long id) {
         categoriaRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public CategoriaResponseDTO actualizarCategoria(Long id, CategoriaRequestDTO request) {
+        // 1. Buscar la categoría existente
+        CategoriaEntity categoriaExistente = categoriaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + id));
+
+        // 2. Validar que el nombre no esté siendo usado por OTRA categoría
+        if (categoriaRepository.existsByNombreAndIdCategoriaNot(request.getNombre(), id)) {
+            throw new RuntimeException("Ya existe otra categoría con el nombre: " + request.getNombre());
+        }
+
+        // 3. Actualizar el nombre (si el frontend enviara idCategoriaPadre, lo actualizaríamos aquí, pero solo envía nombre)
+        categoriaExistente.setNombre(request.getNombre());
+
+        // 4. Guardar en la base de datos
+        CategoriaEntity actualizada = categoriaRepository.save(categoriaExistente);
+
+        // 5. Devolver el DTO mapeado
+        return mapearAResponseDTO(actualizada);
     }
 
     private CategoriaResponseDTO mapearAResponseDTO(CategoriaEntity entidad) {
