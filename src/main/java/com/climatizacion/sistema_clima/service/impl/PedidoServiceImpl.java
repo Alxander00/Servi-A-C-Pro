@@ -44,18 +44,17 @@ public class PedidoServiceImpl implements PedidoService {
         PedidoEntity pedidoGuardado = repository.save(pedido);
 
         for (DetallePedidoRequestDTO item : dto.getItems()) {
+            // Validar que el producto existe (para lanzar error si no)
             ProductoEntity producto = productoRepository.findById(item.getIdProducto())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-            // Descontar stock de forma atómica
+            // Descontar stock en la base de datos
             int rowsUpdated = productoRepository.descontarStock(item.getIdProducto(), item.getCantidad());
             if (rowsUpdated == 0) {
                 throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
             }
 
-            producto.setStock(producto.getStock() - item.getCantidad());
-            productoRepository.save(producto);
-
+            // Crear el detalle del pedido
             DetallePedidoEntity detalle = new DetallePedidoEntity();
             detalle.setPedido(pedidoGuardado);
             detalle.setProducto(producto);
@@ -64,14 +63,13 @@ public class PedidoServiceImpl implements PedidoService {
             detallePedidoRepository.save(detalle);
         }
 
-        // Notificación por correo (NO CRÍTICA) – capturamos excepción para no revertir el pedido
+        // Notificación por correo
         try {
             UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedidoGuardado.getIdUsuario()))
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
             resendEmailService.enviarCorreoPedidoCreado(usuario.getEmail(), usuario.getNombres(), pedidoGuardado.getIdPedido());
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo enviar correo de confirmación de pedido #" + pedidoGuardado.getIdPedido() + " - " + e.getMessage());
-            // No lanzamos la excepción, la transacción sigue su curso
         }
 
         return pedidoGuardado;
