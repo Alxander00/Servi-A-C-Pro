@@ -5,7 +5,10 @@ import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -58,5 +61,17 @@ public class UsuarioController {
     public ResponseEntity<Void> cambiarEstado(@PathVariable Long id, @RequestParam boolean activo) {
         usuarioService.cambiarEstado(id, activo);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/actualizar-avatar")
+    public ResponseEntity<UsuarioDTO> actualizarAvatar(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        // El email se obtiene del token JWT autenticado
+        String email = userDetails.getUsername();
+
+        UsuarioDTO usuarioActualizado = usuarioService.actualizarAvatar(email, file);
+        return ResponseEntity.ok(usuarioActualizado);
     }
 }

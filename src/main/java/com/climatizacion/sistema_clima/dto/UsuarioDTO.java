@@ -25,4 +25,5 @@ public class UsuarioDTO {
     private Rol rol;
     private Boolean activo;
     private String direccion;
+    private String fotoUrl;
 }

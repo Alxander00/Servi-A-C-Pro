@@ -6,6 +6,7 @@ import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.enums.Rol;
 import com.climatizacion.sistema_clima.repository.PasswordResetTokenRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
+import com.climatizacion.sistema_clima.service.CloudinaryService;
 import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.GeocodingService;
 import com.climatizacion.sistema_clima.service.UsuarioService;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,6 +32,7 @@ public class UsuarioImpl implements UsuarioService {
     private final PasswordResetTokenRepository tokenRepository;
     private final ResendEmailService resendEmailService;
     private final GeocodingService geocodingService;
+    private final CloudinaryService cloudinaryService;
 
     @Value("${frontend.url}")
     private String frontendUrl;
@@ -197,6 +200,38 @@ public class UsuarioImpl implements UsuarioService {
         // implementar si es necesario
     }
 
+    @Override
+    @Transactional
+    public UsuarioDTO actualizarAvatar(String email, MultipartFile archivo) {
+        // 1. Buscar usuario por email
+        UsuarioEntity usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // 2. Validar que el archivo no esté vacío
+        if (archivo == null || archivo.isEmpty()) {
+            throw new RuntimeException("Debes seleccionar una imagen.");
+        }
+
+        // 3. Validar tamaño máximo (2MB)
+        if (archivo.getSize() > 2 * 1024 * 1024) {
+            throw new RuntimeException("La imagen no puede superar los 2MB.");
+        }
+
+        // 4. Subir la imagen a Cloudinary
+        try {
+            String urlPublica = cloudinaryService.subirImagen(archivo);
+            usuario.setFotoUrl(urlPublica);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al subir la imagen: " + e.getMessage());
+        }
+
+        // 5. Guardar usuario con la nueva URL
+        UsuarioEntity usuarioActualizado = usuarioRepository.save(usuario);
+
+        // 6. Devolver el DTO actualizado
+        return convertirADTO(usuarioActualizado);
+    }
+
     private UsuarioDTO convertirADTO(UsuarioEntity usuario) {
         return UsuarioDTO.builder()
                 .idUsuario(usuario.getIdUsuario())
@@ -208,6 +243,8 @@ public class UsuarioImpl implements UsuarioService {
                 .rol(usuario.getRol())
                 .activo(usuario.isActivo())
                 .password(usuario.getPassword())
+                .direccion(usuario.getDireccion())
+                .fotoUrl(usuario.getFotoUrl())
                 .build();
     }
 }

@@ -67,6 +67,9 @@ public class UsuarioEntity {
     @Column(name = "direccion")
     private String direccion;
 
+    @Column(name = "foto_url", length = 500)
+    private String fotoUrl;
+
     @Column(precision = 10, scale = 8)
     private BigDecimal latitud;
 
