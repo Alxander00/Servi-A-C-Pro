@@ -68,4 +68,30 @@ public class RepuestoServiceImpl implements RepuestoService {
         repuesto.setActivo(true);
         return repuestoRepository.save(repuesto);
     }
+
+    @Override
+    public RepuestoEntity actualizar(Long id, RepuestoEntity repuestoActualizado) {
+        // 1. Buscamos si el repuesto existe
+        RepuestoEntity repuestoExistente = repuestoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Material no encontrado en el inventario"));
+
+        // 2. Actualizamos solo los datos permitidos
+        repuestoExistente.setNombre(repuestoActualizado.getNombre());
+        repuestoExistente.setUnidadMedida(repuestoActualizado.getUnidadMedida());
+        repuestoExistente.setStockActual(repuestoActualizado.getStockActual());
+        repuestoExistente.setCostoUnitario(repuestoActualizado.getCostoUnitario());
+
+        // 3. Guardamos los cambios
+        return repuestoRepository.save(repuestoExistente);
+    }
+
+    @Override
+    public void eliminar(Long id) {
+        RepuestoEntity repuesto = repuestoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Material no encontrado"));
+
+        repuesto.setActivo(false);
+
+        repuestoRepository.save(repuesto);
+    }
 }

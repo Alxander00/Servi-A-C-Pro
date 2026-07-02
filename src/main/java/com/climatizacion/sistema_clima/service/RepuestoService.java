@@ -8,4 +8,6 @@ public interface RepuestoService {
     List<RepuestoEntity> listarActivos();
     void registrarUsoYDescontarStock(Long idCita, List<RepuestoUsadoDTO> repuestosUsados);
     RepuestoEntity crearRepuesto(RepuestoEntity repuesto);
+    RepuestoEntity actualizar(Long id, RepuestoEntity repuesto);
+    void eliminar(Long id);
 }

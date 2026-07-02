@@ -24,4 +24,16 @@ public class RepuestoController {
     public ResponseEntity<RepuestoEntity> crear(@RequestBody RepuestoEntity repuesto) {
         return ResponseEntity.ok(repuestoService.crearRepuesto(repuesto));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<RepuestoEntity> actualizarRepuesto(@PathVariable Long id, @RequestBody RepuestoEntity repuesto) {
+        RepuestoEntity actualizado = repuestoService.actualizar(id, repuesto);
+        return ResponseEntity.ok(actualizado);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarRepuesto(@PathVariable Long id) {
+        repuestoService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
 }

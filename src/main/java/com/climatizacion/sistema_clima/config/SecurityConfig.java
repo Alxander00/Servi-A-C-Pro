@@ -39,9 +39,11 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/equipos/**").permitAll()
                         .requestMatchers("/api/solicitudes/**").permitAll()
-                        .requestMatchers("/api/equipos/**").permitAll()
                         .requestMatchers("/api/equipos-cliente/**").permitAll()
                         .requestMatchers("/api/citas/**").permitAll()
+                        // 👇 AQUÍ ESTÁ LA RUTA QUE FALTABA 👇
+                        .requestMatchers("/api/repuestos/**").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
