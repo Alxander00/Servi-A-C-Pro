@@ -7,8 +7,8 @@ import com.climatizacion.sistema_clima.enums.Rol;
 import com.climatizacion.sistema_clima.repository.PasswordResetTokenRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.CloudinaryService;
-import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.GeocodingService;
+import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,26 +40,73 @@ public class UsuarioImpl implements UsuarioService {
     @Value("${resend.api.key}")
     private String resendApiKey;
 
+    // ==================== REGISTRO ====================
     @Override
     @Transactional
     public UsuarioDTO registrarUsuario(UsuarioDTO request) {
-        validarDatosUnicos(request.getEmail(), request.getDui(), null);
+        System.out.println("🔍 1. Inicio registro: " + request.getEmail());
+        try {
+            if (usuarioRepository.existsByEmail(request.getEmail())) {
+                throw new RuntimeException("El correo electrónico '" + request.getEmail() + "' ya está registrado.");
+            }
+            System.out.println("✅ 2. Email válido");
 
-        UsuarioEntity usuario = UsuarioEntity.builder()
-                .nombres(request.getNombre())
-                .apellidos(request.getApellido())
-                .dui(request.getDui())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .fechaNacimiento(request.getFechaNacimiento())
-                .telefono(request.getTelefono())
-                .genero(request.getGenero())
-                .rol(request.getRol())
-                .activo(true)
-                .build();
+            if (usuarioRepository.existsByDui(request.getDui())) {
+                throw new RuntimeException("El DUI '" + request.getDui() + "' ya está registrado.");
+            }
+            System.out.println("✅ 3. DUI válido");
 
-        UsuarioEntity usuarioGuardado = usuarioRepository.save(usuario);
-        return convertirADTO(usuarioGuardado);
+            // 4. Construir el usuario
+            UsuarioEntity usuario = UsuarioEntity.builder()
+                    .nombres(request.getNombre())
+                    .apellidos(request.getApellido())
+                    .dui(request.getDui())
+                    .email(request.getEmail())
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .fechaNacimiento(request.getFechaNacimiento())
+                    .telefono(request.getTelefono())
+                    .genero(request.getGenero())
+                    .rol(request.getRol() != null ? request.getRol() : Rol.CLIENTE)
+                    .activo(true)
+                    .direccion(request.getDireccion())
+                    .build();
+            System.out.println("✅ 4. Usuario construido");
+
+            // 5. Guardar el usuario
+            UsuarioEntity usuarioGuardado = usuarioRepository.save(usuario);
+            System.out.println("✅ 5. Usuario guardado, ID: " + usuarioGuardado.getIdUsuario());
+
+            // 6. Geocodificar (con try-catch)
+            if (usuarioGuardado.getRol() == Rol.CLIENTE
+                    && usuarioGuardado.getDireccion() != null
+                    && !usuarioGuardado.getDireccion().isEmpty()) {
+                try {
+                    System.out.println("📍 Geocodificando dirección: " + usuarioGuardado.getDireccion());
+                    double[] coords = geocodingService.geocode(usuarioGuardado.getDireccion());
+                    if (coords != null) {
+                        usuarioGuardado.setLatitud(BigDecimal.valueOf(coords[0]));
+                        usuarioGuardado.setLongitud(BigDecimal.valueOf(coords[1]));
+                        usuarioRepository.save(usuarioGuardado);
+                        System.out.println("✅ Coordenadas guardadas: " + coords[0] + ", " + coords[1]);
+                    } else {
+                        System.out.println("⚠️ No se obtuvieron coordenadas para: " + usuarioGuardado.getDireccion());
+                    }
+                } catch (Exception e) {
+                    System.err.println("❌ Error al geocodificar: " + e.getMessage());
+                }
+            }
+
+            System.out.println("✅ 6. Geocodificación completada");
+
+            UsuarioDTO dto = convertirADTO(usuarioGuardado);
+            System.out.println("✅ 7. DTO convertido: " + dto);
+            return dto;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error en registrarUsuario: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Relanzar para que el GlobalExceptionHandler lo maneje
+        }
     }
 
     @Override
@@ -96,7 +143,15 @@ public class UsuarioImpl implements UsuarioService {
     @Transactional
     public UsuarioDTO actualizarUsuario(Long idUsuario, UsuarioDTO request) {
         UsuarioEntity usuarioExistente = obtenerEntidadPorId(idUsuario);
-        validarDatosUnicos(request.getEmail(), request.getDui(), idUsuario);
+        // Validar que el email no esté en otro usuario
+        if (!usuarioExistente.getEmail().equals(request.getEmail())
+                && usuarioRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("El correo electrónico '" + request.getEmail() + "' ya está registrado por otro usuario.");
+        }
+        if (!usuarioExistente.getDui().equals(request.getDui())
+                && usuarioRepository.existsByDui(request.getDui())) {
+            throw new RuntimeException("El DUI '" + request.getDui() + "' ya está registrado por otro usuario.");
+        }
 
         usuarioExistente.setNombres(request.getNombre());
         usuarioExistente.setApellidos(request.getApellido());
@@ -108,12 +163,16 @@ public class UsuarioImpl implements UsuarioService {
         usuarioExistente.setRol(request.getRol());
         usuarioExistente.setDireccion(request.getDireccion());
 
-        // Geocodificar directo en el usuario si es cliente
-        if (request.getRol() == Rol.CLIENTE && request.getDireccion() != null) {
-            double[] coords = geocodingService.geocode(request.getDireccion());
-            if (coords != null) {
-                usuarioExistente.setLatitud(BigDecimal.valueOf(coords[0]));
-                usuarioExistente.setLongitud(BigDecimal.valueOf(coords[1]));
+        // Geocodificar si es cliente y cambió dirección
+        if (request.getRol() == Rol.CLIENTE && request.getDireccion() != null && !request.getDireccion().isEmpty()) {
+            try {
+                double[] coords = geocodingService.geocode(request.getDireccion());
+                if (coords != null) {
+                    usuarioExistente.setLatitud(BigDecimal.valueOf(coords[0]));
+                    usuarioExistente.setLongitud(BigDecimal.valueOf(coords[1]));
+                }
+            } catch (Exception e) {
+                System.err.println("❌ Error al geocodificar en actualización: " + e.getMessage());
             }
         }
 
@@ -142,10 +201,9 @@ public class UsuarioImpl implements UsuarioService {
         UsuarioEntity user = usuarioRepository.findByEmail(email).orElse(null);
         if (user == null) {
             System.out.println("⚠️ Usuario no encontrado: " + email);
-            return; // No revelamos si existe o no
+            return;
         }
 
-        // Eliminar tokens anteriores
         tokenRepository.deleteByUsuarioId(user.getIdUsuario());
 
         String token = UUID.randomUUID().toString();
@@ -164,14 +222,12 @@ public class UsuarioImpl implements UsuarioService {
                 "<p>Este enlace expira en 1 hora.</p>" +
                 "<p>Si no solicitaste este cambio, ignora este mensaje.</p>";
 
-        // 🔥 NUEVO: Si la clave es dummy, imprimir en consola
         if ("dummy_key_for_local_development".equals(resendApiKey)) {
             System.out.println("=========================================");
             System.out.println("🔗 Enlace de recuperación (modo desarrollo):");
             System.out.println(resetLink);
             System.out.println("=========================================");
         } else {
-            // En producción, enviar con Resend
             resendEmailService.enviarCorreo(user.getEmail(), "Recuperación de contraseña - ClimaPro", cuerpo);
         }
     }
@@ -191,15 +247,7 @@ public class UsuarioImpl implements UsuarioService {
         tokenRepository.save(resetToken);
     }
 
-    private UsuarioEntity obtenerEntidadPorId(Long id) {
-        return usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
-    }
-
-    private void validarDatosUnicos(String email, String dui, Long idUsuarioActual) {
-        // implementar si es necesario
-    }
-
+    // ==================== AVATAR ====================
     @Override
     @Transactional
     public UsuarioDTO actualizarAvatar(String email, MultipartFile archivo) {
@@ -217,7 +265,13 @@ public class UsuarioImpl implements UsuarioService {
             throw new RuntimeException("La imagen no puede superar los 2MB.");
         }
 
-        // 4. Subir la imagen a Cloudinary
+        // 4. Validar tipo de archivo (opcional pero recomendado)
+        String contentType = archivo.getContentType();
+        if (contentType == null || !(contentType.startsWith("image/"))) {
+            throw new RuntimeException("El archivo debe ser una imagen (JPG, PNG, WEBP, etc.)");
+        }
+
+        // 5. Subir la imagen a Cloudinary
         try {
             String urlPublica = cloudinaryService.subirImagen(archivo);
             usuario.setFotoUrl(urlPublica);
@@ -225,11 +279,16 @@ public class UsuarioImpl implements UsuarioService {
             throw new RuntimeException("Error al subir la imagen: " + e.getMessage());
         }
 
-        // 5. Guardar usuario con la nueva URL
+        // 6. Guardar usuario con la nueva URL
         UsuarioEntity usuarioActualizado = usuarioRepository.save(usuario);
 
-        // 6. Devolver el DTO actualizado
+        // 7. Devolver el DTO actualizado
         return convertirADTO(usuarioActualizado);
+    }
+
+    private UsuarioEntity obtenerEntidadPorId(Long id) {
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
     }
 
     private UsuarioDTO convertirADTO(UsuarioEntity usuario) {

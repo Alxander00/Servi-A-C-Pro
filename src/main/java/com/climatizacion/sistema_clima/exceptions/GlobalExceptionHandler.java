@@ -14,9 +14,13 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
     // Maneja errores de validación (@Valid)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
+
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
@@ -26,7 +30,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
-                .status((long)HttpStatus.BAD_REQUEST.value())
+                .status((long) HttpStatus.BAD_REQUEST.value())
                 .error("Error de Validación")
                 .message("Los datos enviados no son válidos")
                 .validations(errors)
@@ -36,14 +40,34 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    // Maneja excepciones personalizadas (como Categoria no encontrada)
+    // ✅ Maneja excepciones de negocio (como correo/DUI duplicado)
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleRuntimeException(
+            RuntimeException ex,
+            HttpServletRequest request) {
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
-                .status((long)HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Error en el Servidor")
-                .message(ex.getMessage())
+                .status((long) HttpStatus.BAD_REQUEST.value())  // 👈 400 Bad Request
+                .error("Error de Negocio")
+                .message(ex.getMessage())  // 👈 Mensaje claro de la excepción
+                .path(request.getRequestURI())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    // Maneja cualquier otra excepción no capturada (500)
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneralException(
+            Exception ex,
+            HttpServletRequest request) {
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status((long) HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error("Error Interno del Servidor")
+                .message("Ocurrió un error inesperado. Por favor, intenta más tarde.")
                 .path(request.getRequestURI())
                 .build();
 
