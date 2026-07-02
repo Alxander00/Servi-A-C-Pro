@@ -14,22 +14,30 @@ public class CloudinaryService {
 
     private final Cloudinary cloudinary;
 
-    // Inyectamos la URL de Cloudinary (que puede venir de variable de entorno)
     public CloudinaryService(@Value("${cloudinary.url}") String cloudinaryUrl) {
         this.cloudinary = new Cloudinary(cloudinaryUrl);
     }
 
-    /**
-     * Sube un archivo a Cloudinary y devuelve la URL pública segura (https)
-     */
     public String subirImagen(MultipartFile file) throws IOException {
         Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
         return uploadResult.get("secure_url").toString();
     }
 
     public String subirImagenBase64(String base64String) throws IOException {
-        // Cloudinary puede subir imágenes directamente desde una cadena Data URI de Base64
-        Map<?, ?> uploadResult = cloudinary.uploader().upload(base64String, ObjectUtils.emptyMap());
+        // 1. Limpiar la cadena: eliminar prefijo "data:image/png;base64," si existe
+        String cleanBase64 = base64String;
+        if (base64String.contains(",")) {
+            cleanBase64 = base64String.substring(base64String.indexOf(",") + 1);
+        }
+
+        // 2. Eliminar espacios en blanco y saltos de línea (por si acaso)
+        cleanBase64 = cleanBase64.replaceAll("\\s", "");
+
+        // 3. Subir a Cloudinary (Cloudinary acepta Base64 sin prefijo)
+        Map<?, ?> uploadResult = cloudinary.uploader().upload(
+                "data:image/png;base64," + cleanBase64,  // Reconstruir con el prefijo correcto
+                ObjectUtils.emptyMap()
+        );
         return uploadResult.get("secure_url").toString();
     }
 }

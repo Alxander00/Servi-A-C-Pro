@@ -16,7 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -143,37 +146,88 @@ public class CitaServiceImpl implements CitaService {
 
     @Override
     @Transactional
-    public CitaResponseDTO guardarReporteTecnico(Long idCita, String estado, String notas, List<MultipartFile> fotosAntes, List<MultipartFile> fotosDespues, String firmaBase64) {
+    public CitaResponseDTO guardarReporteTecnico(Long idCita, String estado, String notas,
+                                                 List<MultipartFile> fotosAntes,
+                                                 List<MultipartFile> fotosDespues,
+                                                 String firmaBase64) {
+        System.out.println("📝 ========== GUARDANDO REPORTE ==========");
+        System.out.println("   ID Cita: " + idCita);
+        System.out.println("   Estado recibido: '" + estado + "'");
+        System.out.println("   Notas: " + (notas != null ? notas : "(vacío)"));
+        System.out.println("   Fotos Antes: " + (fotosAntes != null ? fotosAntes.size() : 0) + " archivos");
+        System.out.println("   Fotos Despues: " + (fotosDespues != null ? fotosDespues.size() : 0) + " archivos");
+        System.out.println("   Firma: " + (firmaBase64 != null ? "Sí (tamaño: " + firmaBase64.length() + " caracteres)" : "No"));
+
         CitaEntity cita = citaRepository.findById(idCita)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
 
-        cita.setEstado(EstadoCita.valueOf(estado.toUpperCase()));
-        if (notas != null) cita.setNotas(notas);
+        // Validar estado
+        EstadoCita estadoEnum;
+        try {
+            estadoEnum = EstadoCita.valueOf(estado.toUpperCase());
+            System.out.println("   ✅ Estado convertido: " + estadoEnum);
+        } catch (IllegalArgumentException e) {
+            System.err.println("❌ Estado inválido: " + estado);
+            throw new RuntimeException("Estado inválido: " + estado + ". Valores permitidos: " + Arrays.toString(EstadoCita.values()));
+        }
+        cita.setEstado(estadoEnum);
+
+        if (notas != null && !notas.isEmpty()) {
+            cita.setNotas(notas);
+        }
 
         try {
-            // 1. Subir fotos de ANTES
+            // Subir fotos Antes
             if (fotosAntes != null && !fotosAntes.isEmpty()) {
-                List<String> urlsAntes = new java.util.ArrayList<>();
-                for (MultipartFile file : fotosAntes) urlsAntes.add(cloudinaryService.subirImagen(file));
+                List<String> urlsAntes = new ArrayList<>();
+                for (MultipartFile file : fotosAntes) {
+                    System.out.println("   📸 Subiendo foto ANTES: " + file.getOriginalFilename() + " (" + file.getSize() + " bytes)");
+                    urlsAntes.add(cloudinaryService.subirImagen(file));
+                }
                 cita.setUrlsFotosAntes(String.join(",", urlsAntes));
             }
 
-            // 2. Subir fotos de DESPUÉS
+            // Subir fotos Después
             if (fotosDespues != null && !fotosDespues.isEmpty()) {
-                List<String> urlsDespues = new java.util.ArrayList<>();
-                for (MultipartFile file : fotosDespues) urlsDespues.add(cloudinaryService.subirImagen(file));
+                List<String> urlsDespues = new ArrayList<>();
+                for (MultipartFile file : fotosDespues) {
+                    System.out.println("   📸 Subiendo foto DESPUES: " + file.getOriginalFilename() + " (" + file.getSize() + " bytes)");
+                    urlsDespues.add(cloudinaryService.subirImagen(file));
+                }
                 cita.setUrlsFotosDespues(String.join(",", urlsDespues));
             }
 
-            // 3. Subir la FIRMA (Viene en Base64)
+            // Subir firma
             if (firmaBase64 != null && !firmaBase64.isEmpty()) {
+                System.out.println("   ✍️ Procesando firma...");
+                // Validar formato
+                if (!firmaBase64.startsWith("data:image/png;base64,") &&
+                        !firmaBase64.startsWith("data:image/jpeg;base64,") &&
+                        !firmaBase64.startsWith("data:image/jpg;base64,")) {
+                    throw new RuntimeException("Formato de firma no válido. Solo se permiten PNG o JPG.");
+                }
+                // Validar tamaño (1.5MB máximo)
+                long sizeBytes = (firmaBase64.length() * 3) / 4;
+                if (sizeBytes > 1.5 * 1024 * 1024) {
+                    throw new RuntimeException("La firma es demasiado grande (máx 1.5MB). Tamaño actual: " + sizeBytes + " bytes");
+                }
+                System.out.println("   ✅ Firma válida, subiendo a Cloudinary...");
                 String firmaUrl = cloudinaryService.subirImagenBase64(firmaBase64);
                 cita.setUrlFirmaCliente(firmaUrl);
+                System.out.println("   ✅ Firma subida: " + firmaUrl);
             }
-        } catch (java.io.IOException e) {
-            throw new RuntimeException("Error al subir evidencias a Cloudinary: " + e.getMessage());
-        }
 
-        return mapToResponseDTO(citaRepository.save(cita));
+            CitaEntity citaGuardada = citaRepository.save(cita);
+            System.out.println("✅ Reporte guardado exitosamente");
+            return mapToResponseDTO(citaGuardada);
+
+        } catch (IOException e) {
+            System.err.println("❌ Error de IO: " + e.getMessage());
+            throw new RuntimeException("Error al subir evidencias a Cloudinary: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("❌ Error inesperado: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

@@ -96,4 +96,10 @@ public class ProductoController {
         });
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @GetMapping("/{id}/stock")
+    public ResponseEntity<Long> obtenerStock(@PathVariable Long id) {
+        ProductoResponseDTO producto = productoService.obtenerPorId(id);
+        return ResponseEntity.ok(producto.getStock());
+    }
 }
