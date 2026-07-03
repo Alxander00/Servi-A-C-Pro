@@ -126,6 +126,7 @@ public class CitaServiceImpl implements CitaService {
                 .idCliente(entity.getCliente().getIdUsuario())
                 .nombreCliente(entity.getCliente().getNombres() + " " + entity.getCliente().getApellidos())
                 .direccionCliente(entity.getCliente().getDireccion())
+                .telefonoCliente(entity.getCliente().getTelefono())
                 .idPedido(entity.getPedido() != null ? entity.getPedido().getIdPedido() : null)
                 .idTecnico(entity.getTecnico().getIdUsuario())
                 .nombreTecnico(entity.getTecnico().getNombres() + " " + entity.getTecnico().getApellidos())

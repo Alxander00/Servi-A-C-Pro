@@ -24,4 +24,5 @@ public class CitaResponseDTO {
     private String urlFirmaCliente;
     private String tipoServicio;
     private String mensajeCliente;
+    private String telefonoCliente;
 }
