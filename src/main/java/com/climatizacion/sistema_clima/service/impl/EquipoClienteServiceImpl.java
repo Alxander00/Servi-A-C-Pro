@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class EquipoClienteServiceImpl implements EquipoClienteService {
 
     private final EquipoClienteRepository equipoClienteRepository;
-    private final UsuarioRepository usuarioRepository; // Reemplazamos ClienteRepository
+    private final UsuarioRepository usuarioRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -29,11 +29,11 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
                 .collect(Collectors.toList());
     }
 
+    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
     @Override
     @Transactional(readOnly = true)
     public List<EquipoClienteResponseDTO> obtenerPorCliente(Long idCliente) {
-        // NOTA: Asegúrate de renombrar este método en tu EquipoClienteRepository a findByCliente_IdUsuario
-        return equipoClienteRepository.findByCliente_IdUsuario(idCliente).stream()
+        return equipoClienteRepository.findByCliente_IdUsuarioWithFetch(idCliente).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -88,14 +88,14 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
     private EquipoClienteResponseDTO mapToResponseDTO(EquipoClienteEntity entity) {
         return EquipoClienteResponseDTO.builder()
                 .idEquipo(entity.getIdEquipo())
-                .idCliente(entity.getCliente().getIdUsuario()) // Actualizado a getIdUsuario()
+                .idCliente(entity.getCliente().getIdUsuario())
                 .nombreCliente(entity.getCliente().getNombres() + " " + entity.getCliente().getApellidos())
                 .marca(entity.getMarca())
                 .modelo(entity.getModelo())
                 .capacidadBtu(entity.getCapacidadBtu())
                 .ubicacionEnCasa(entity.getUbicacionEnCasa())
-                .fechaInstalacion(entity.getFechaInstalacion()).
-                fechaUltimoMantenimiento(entity.getFechaUltimoMantenimiento())
+                .fechaInstalacion(entity.getFechaInstalacion())
+                .fechaUltimoMantenimiento(entity.getFechaUltimoMantenimiento())
                 .notas(entity.getNotas())
                 .build();
     }

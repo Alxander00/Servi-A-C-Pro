@@ -14,4 +14,10 @@ public interface SolicitudServicioRepository extends JpaRepository<SolicitudServ
     List<SolicitudServicioEntity> findByCliente_IdUsuario(Long idCliente);
     long countByEstado(String estado);
     long countByCliente_IdUsuarioAndEstado(Long idCliente, String estado);
+
+    @Query("SELECT s FROM SolicitudServicioEntity s JOIN FETCH s.cliente WHERE s.estado = :estado ORDER BY s.fechaCreacion ASC")
+    List<SolicitudServicioEntity> findByEstadoOrderByFechaCreacionAscWithFetch(@Param("estado") String estado);
+
+    @Query("SELECT s FROM SolicitudServicioEntity s JOIN FETCH s.cliente WHERE s.cliente.idUsuario = :idCliente")
+    List<SolicitudServicioEntity> findByCliente_IdUsuarioWithFetch(@Param("idCliente") Long idCliente);
 }

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -22,7 +23,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
 
     private final SolicitudServicioRepository solicitudRepository;
     private final CitaRepository citaRepository;
-    private final UsuarioRepository usuarioRepository; // Eliminamos ClienteRepository
+    private final UsuarioRepository usuarioRepository;
     private final ResendEmailService resendEmailService;
 
     @Value("${admin.email:admin@climapro.com}")
@@ -31,7 +32,6 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     @Override
     @Transactional
     public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request) {
-        // Cambiamos ClienteEntity por UsuarioEntity
         UsuarioEntity cliente = usuarioRepository.findById(request.getIdCliente())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
@@ -45,7 +45,6 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                 .build();
         SolicitudServicioEntity saved = solicitudRepository.save(solicitud);
 
-        // Notificar al administrador (NO CRÍTICO)
         try {
             String asunto = "Nueva solicitud de servicio de " + cliente.getNombres() + " " + cliente.getApellidos();
             String cuerpo = "<h2>Nueva solicitud de servicio</h2>" +
@@ -62,16 +61,19 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
         return mapToResponseDTO(saved);
     }
 
+    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
     @Override
+    @Transactional(readOnly = true)
     public List<SolicitudResponseDTO> listarSolicitudesPendientes() {
-        return solicitudRepository.findByEstadoOrderByFechaCreacionAsc("PENDIENTE")
+        return solicitudRepository.findByEstadoOrderByFechaCreacionAscWithFetch("PENDIENTE")
                 .stream().map(this::mapToResponseDTO).collect(Collectors.toList());
     }
 
+    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
     @Override
     @Transactional(readOnly = true)
     public List<SolicitudResponseDTO> listarPorCliente(Long idCliente) {
-        return solicitudRepository.findByCliente_IdUsuario(idCliente)
+        return solicitudRepository.findByCliente_IdUsuarioWithFetch(idCliente)
                 .stream().map(this::mapToResponseDTO).collect(Collectors.toList());
     }
 
@@ -97,7 +99,6 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
         solicitud.setEstado("ASIGNADA");
         solicitudRepository.save(solicitud);
 
-        // Notificar al técnico (NO CRÍTICO)
         try {
             String fechaFormateada = fechaInicio.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
             resendEmailService.enviarCorreoNuevaCita(
@@ -105,7 +106,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                     tecnico.getNombres() + " " + tecnico.getApellidos(),
                     solicitud.getCliente().getNombres() + " " + solicitud.getCliente().getApellidos(),
                     fechaFormateada,
-                    solicitud.getCliente().getDireccion() // Actualizado a getDireccion()
+                    solicitud.getCliente().getDireccion()
             );
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo notificar al técnico sobre la cita asociada a la solicitud #" + idSolicitud + " - " + e.getMessage());
@@ -124,7 +125,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     private SolicitudResponseDTO mapToResponseDTO(SolicitudServicioEntity entity) {
         return SolicitudResponseDTO.builder()
                 .idSolicitud(entity.getIdSolicitud())
-                .idCliente(entity.getCliente().getIdUsuario()) // Actualizado a getIdUsuario()
+                .idCliente(entity.getCliente().getIdUsuario())
                 .nombreCliente(entity.getCliente().getNombres() + " " + entity.getCliente().getApellidos())
                 .tipoServicio(entity.getTipoServicio())
                 .fechaPreferida(entity.getFechaPreferida())

@@ -36,15 +36,16 @@ public class CitaServiceImpl implements CitaService {
     @Override
     @Transactional(readOnly = true)
     public List<CitaResponseDTO> obtenerTodas() {
-        return citaRepository.findAll().stream()
+        return citaRepository.findAllWithFetch().stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
 
+    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
     @Override
     @Transactional(readOnly = true)
     public List<CitaResponseDTO> obtenerPorTecnico(Long idTecnico) {
-        return citaRepository.findByTecnico_IdUsuario(idTecnico).stream()
+        return citaRepository.findByTecnico_IdUsuarioWithFetch(idTecnico).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -52,7 +53,6 @@ public class CitaServiceImpl implements CitaService {
     @Override
     @Transactional
     public CitaResponseDTO crear(CitaRequestDTO request) {
-        // Ahora buscamos al cliente directamente en la tabla de usuarios
         UsuarioEntity cliente = usuarioRepository.findById(request.getIdCliente())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
@@ -77,14 +77,13 @@ public class CitaServiceImpl implements CitaService {
 
         CitaEntity citaGuardada = citaRepository.save(cita);
 
-        // ✅ NOTIFICAR AL TÉCNICO POR CORREO
         String fechaFormateada = request.getFechaInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
         resendEmailService.enviarCorreoNuevaCita(
                 tecnico.getEmail(),
                 tecnico.getNombres() + " " + tecnico.getApellidos(),
                 cliente.getNombres() + " " + cliente.getApellidos(),
                 fechaFormateada,
-                cliente.getDireccion() // Actualizado al nuevo campo de UsuarioEntity
+                cliente.getDireccion()
         );
 
         return mapToResponseDTO(citaGuardada);
@@ -130,17 +129,17 @@ public class CitaServiceImpl implements CitaService {
                 .build();
     }
 
+    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
     @Override
     @Transactional(readOnly = true)
     public List<CitaResponseDTO> obtenerPorCliente(Long idCliente) {
-        return citaRepository.findByCliente_IdUsuario(idCliente).stream()
+        return citaRepository.findByCliente_IdUsuarioWithFetch(idCliente).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     public long contarCitasPorClienteYEstados(Long idCliente, List<EstadoCita> estados) {
-        // NOTA: Asegúrate de renombrar este método en tu CitaRepository a countByCliente_IdUsuarioAndEstadoIn
         return citaRepository.countByCliente_IdUsuarioAndEstadoIn(idCliente, estados);
     }
 
@@ -161,7 +160,6 @@ public class CitaServiceImpl implements CitaService {
         CitaEntity cita = citaRepository.findById(idCita)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
 
-        // Validar estado
         EstadoCita estadoEnum;
         try {
             estadoEnum = EstadoCita.valueOf(estado.toUpperCase());
@@ -177,7 +175,6 @@ public class CitaServiceImpl implements CitaService {
         }
 
         try {
-            // Subir fotos Antes
             if (fotosAntes != null && !fotosAntes.isEmpty()) {
                 List<String> urlsAntes = new ArrayList<>();
                 for (MultipartFile file : fotosAntes) {
@@ -187,7 +184,6 @@ public class CitaServiceImpl implements CitaService {
                 cita.setUrlsFotosAntes(String.join(",", urlsAntes));
             }
 
-            // Subir fotos Después
             if (fotosDespues != null && !fotosDespues.isEmpty()) {
                 List<String> urlsDespues = new ArrayList<>();
                 for (MultipartFile file : fotosDespues) {
@@ -197,16 +193,13 @@ public class CitaServiceImpl implements CitaService {
                 cita.setUrlsFotosDespues(String.join(",", urlsDespues));
             }
 
-            // Subir firma
             if (firmaBase64 != null && !firmaBase64.isEmpty()) {
                 System.out.println("   ✍️ Procesando firma...");
-                // Validar formato
                 if (!firmaBase64.startsWith("data:image/png;base64,") &&
                         !firmaBase64.startsWith("data:image/jpeg;base64,") &&
                         !firmaBase64.startsWith("data:image/jpg;base64,")) {
                     throw new RuntimeException("Formato de firma no válido. Solo se permiten PNG o JPG.");
                 }
-                // Validar tamaño (1.5MB máximo)
                 long sizeBytes = (firmaBase64.length() * 3) / 4;
                 if (sizeBytes > 1.5 * 1024 * 1024) {
                     throw new RuntimeException("La firma es demasiado grande (máx 1.5MB). Tamaño actual: " + sizeBytes + " bytes");
