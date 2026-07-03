@@ -1,9 +1,11 @@
 package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.MensajeDTO;
+import com.climatizacion.sistema_clima.entities.CitaEntity;
 import com.climatizacion.sistema_clima.entities.ConversacionEntity;
 import com.climatizacion.sistema_clima.entities.MensajeEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
+import com.climatizacion.sistema_clima.repository.CitaRepository;
 import com.climatizacion.sistema_clima.repository.ConversacionRepository;
 import com.climatizacion.sistema_clima.repository.MensajeRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
@@ -30,10 +32,10 @@ public class ChatController {
     private final ConversacionRepository conversacionRepository;
     private final UsuarioRepository usuarioRepository;
 
+    private final CitaRepository citaRepository;
+
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload Map<String, Object> payload, Principal principal) {
-        System.out.println("📨 Mensaje recibido en /chat.send: " + payload);
-
         if (principal == null) {
             System.err.println("❌ Principal es null, no se puede enviar mensaje");
             return;
@@ -41,10 +43,7 @@ public class ChatController {
 
         Long conversacionId = Long.valueOf(payload.get("conversacionId").toString());
         String contenido = (String) payload.get("contenido");
-
-        // AHORA EL PRINCIPAL CONTIENE TU ID DIRECTAMENTE
         Long idRemitente = Long.valueOf(principal.getName());
-        System.out.println("🆔 ID del remitente: " + idRemitente);
 
         UsuarioEntity remitente = usuarioRepository.findById(idRemitente)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -62,7 +61,7 @@ public class ChatController {
         UsuarioEntity destinatario = usuarioRepository.findById(idDestinatario)
                 .orElseThrow(() -> new RuntimeException("Destinatario no encontrado"));
 
-        // Guardar mensaje en la Base de Datos
+        // 1. Guardar mensaje en BD
         MensajeEntity mensaje = MensajeEntity.builder()
                 .conversacion(conversacion)
                 .idRemitente(remitente.getIdUsuario())
@@ -72,7 +71,6 @@ public class ChatController {
                 .leido(false)
                 .build();
         mensaje = mensajeRepository.save(mensaje);
-        System.out.println("✅ Mensaje guardado en BD con ID: " + mensaje.getId());
 
         MensajeDTO mensajeDTO = MensajeDTO.builder()
                 .id(mensaje.getId())
@@ -86,17 +84,39 @@ public class ChatController {
                 .leido(mensaje.getLeido())
                 .build();
 
-        // Enviar al destinatario en tiempo real
+        // 2. Enviar el mensaje por WebSocket
         messagingTemplate.convertAndSendToUser(
                 idDestinatario.toString(),
                 "/queue/messages",
                 mensajeDTO
         );
-        System.out.println("📤 Mensaje enviado al usuario destino: " + idDestinatario);
 
-        // Notificación flotante para el destinatario
-        Map<String, String> notificacion = new HashMap<>();
+        // 👇 3. LÓGICA MÁGICA: Buscar la cita y enviar la notificación con el ID 👇
+        Long idCliente = conversacion.getIdCliente();
+        Long idTecnico = conversacion.getIdTecnico();
+        Long idCitaNotificacion = null;
+
+        // Buscamos qué cita comparten este cliente y este técnico
+        List<CitaEntity> citasVinculadas = citaRepository.findByCliente_IdUsuario(idCliente);
+        for (CitaEntity c : citasVinculadas) {
+            if (c.getTecnico() != null && c.getTecnico().getIdUsuario().equals(idTecnico)) {
+                idCitaNotificacion = c.getIdCita();
+                // Si la cita está activa, le damos prioridad
+                if ("PROGRAMADA".equals(c.getEstado()) || "EN_PROCESO".equals(c.getEstado())) {
+                    break;
+                }
+            }
+        }
+
+        // Usamos Map<String, Object> para poder enviar el ID como número
+        Map<String, Object> notificacion = new HashMap<>();
         notificacion.put("mensaje", "Nuevo mensaje de " + remitente.getNombres());
+
+        // Si encontramos la cita, adjuntamos su ID al paquete
+        if (idCitaNotificacion != null) {
+            notificacion.put("idCita", idCitaNotificacion);
+        }
+
         messagingTemplate.convertAndSendToUser(
                 idDestinatario.toString(),
                 "/queue/notifications",
