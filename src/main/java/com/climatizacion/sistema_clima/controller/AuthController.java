@@ -1,7 +1,11 @@
 package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
-import com.climatizacion.sistema_clima.security.JwtUtil;  // ✅ Importación correcta
+import com.climatizacion.sistema_clima.entities.RefreshTokenEntity;
+import com.climatizacion.sistema_clima.entities.UsuarioEntity;
+import com.climatizacion.sistema_clima.repository.UsuarioRepository;
+import com.climatizacion.sistema_clima.security.JwtUtil;
+import com.climatizacion.sistema_clima.service.RefreshTokenService;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +21,10 @@ import java.util.Map;
 public class AuthController {
 
     private final UsuarioService usuarioService;
+    private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenService refreshTokenService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> creds) {
@@ -36,14 +42,21 @@ public class AuthController {
                 return ResponseEntity.status(401).body(Map.of("message", "Contraseña incorrecta"));
             }
 
-            // ✅ GENERAR EL TOKEN
-            String token = jwtUtil.generateToken(user.getEmail(), user.getRol().name());
-            System.out.println("🔑 Token generado: " + token); // Para ver en logs
+            // Obtener entidad completa para generar refresh token
+            UsuarioEntity usuarioEntity = usuarioRepository.findById(user.getIdUsuario())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            // Generar Access Token
+            String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRol().name());
+
+            // Generar Refresh Token
+            RefreshTokenEntity refreshTokenEntity = refreshTokenService.crearRefreshToken(usuarioEntity);
 
             user.setPassword(null);
 
             Map<String, Object> response = new HashMap<>();
-            response.put("token", token);
+            response.put("accessToken", accessToken);
+            response.put("refreshToken", refreshTokenEntity.getToken());
             response.put("user", user);
 
             return ResponseEntity.ok(response);
@@ -52,7 +65,25 @@ public class AuthController {
         }
     }
 
-    // ========== RECUPERACIÓN DE CONTRASEÑA ==========
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Refresh token requerido"));
+        }
+
+        try {
+            String newAccessToken = refreshTokenService.generarNuevoAccessToken(refreshToken);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("accessToken", newAccessToken);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
