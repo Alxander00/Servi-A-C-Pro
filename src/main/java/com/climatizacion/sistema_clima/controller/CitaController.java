@@ -4,6 +4,7 @@ import com.climatizacion.sistema_clima.dto.CitaRequestDTO;
 import com.climatizacion.sistema_clima.dto.CitaResponseDTO;
 import com.climatizacion.sistema_clima.dto.RepuestoUsadoDTO;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
+import com.climatizacion.sistema_clima.security.CustomUserDetails;
 import com.climatizacion.sistema_clima.service.CitaService;
 import com.climatizacion.sistema_clima.service.RepuestoService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -52,7 +54,20 @@ public class CitaController {
     }
 
     @GetMapping("/cliente/{idCliente}")
-    public ResponseEntity<List<CitaResponseDTO>> listarPorCliente(@PathVariable Long idCliente) {
+    public ResponseEntity<List<CitaResponseDTO>> listarPorCliente(
+            @PathVariable Long idCliente,
+            Authentication authentication) {
+
+        // Obtener el usuario autenticado
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Long idUsuarioAutenticado = userDetails.getIdUsuario();
+        String rol = userDetails.getAuthorities().iterator().next().getAuthority();
+
+        // Si es CLIENTE, solo puede ver sus propias citas
+        if (rol.equals("CLIENTE") && !idUsuarioAutenticado.equals(idCliente)) {
+            throw new RuntimeException("No tienes permiso para ver las citas de otro usuario");
+        }
+
         return ResponseEntity.ok(citaService.obtenerPorCliente(idCliente));
     }
 

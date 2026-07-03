@@ -37,9 +37,9 @@ public class SecurityConfig {
                         .requestMatchers("/categorias").permitAll()
                         .requestMatchers("/productos/**").permitAll()
                         .requestMatchers("/api/equipos/**").permitAll()
-                        .requestMatchers("/api/solicitudes/**").permitAll()
+                        .requestMatchers("/api/solicitudes/**").authenticated()
                         .requestMatchers("/api/equipos-cliente/**").permitAll()
-                        .requestMatchers("/api/citas/**").permitAll()
+                        .requestMatchers("/api/citas/**").authenticated()
                         .requestMatchers("/api/repuestos/**").hasAnyAuthority("ADMIN", "TECNICO")
                         .requestMatchers("/ws-chat/**").permitAll()
 
