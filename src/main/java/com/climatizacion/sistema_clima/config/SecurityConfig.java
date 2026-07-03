@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/equipos-cliente/**").permitAll()
                         .requestMatchers("/api/citas/**").permitAll()
                         .requestMatchers("/api/repuestos/**").hasAnyAuthority("ADMIN", "TECNICO")
+                        .requestMatchers("/ws-chat/**").permitAll()
 
                         .requestMatchers("/usuarios").permitAll()
                         .anyRequest().authenticated()
