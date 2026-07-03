@@ -96,10 +96,22 @@ public class ProductoImpl implements ProductoService {
         producto.setStock(dto.getStock());
         producto.setCategoria(categoria);
 
-        // Manejo de imágenes: si vienen nuevas, reemplazar
-        if (nuevasImagenes != null && !nuevasImagenes.isEmpty()) {
-            // Opcional: eliminar imágenes antiguas de Cloudinary (no implementado aquí, pero se puede)
+        // ===== MANEJO DE IMÁGENES =====
+        // 1. Si se envió la lista de URLs (las que deben quedar), reemplazar la lista actual
+        if (dto.getImagenesUrls() != null) {
             producto.getImagenes().clear();
+            for (String url : dto.getImagenesUrls()) {
+                ProductoImagen imagenEntity = ProductoImagen.builder()
+                        .imagenUrl(url)
+                        .producto(producto)
+                        .esPrincipal(producto.getImagenes().isEmpty())
+                        .build();
+                producto.getImagenes().add(imagenEntity);
+            }
+        }
+
+        // 2. Si hay nuevas imágenes, AGREGARLAS (no reemplazar)
+        if (nuevasImagenes != null && !nuevasImagenes.isEmpty()) {
             for (MultipartFile img : nuevasImagenes) {
                 try {
                     String urlPublica = cloudinaryService.subirImagen(img);
@@ -113,23 +125,15 @@ public class ProductoImpl implements ProductoService {
                     throw new RuntimeException("Error subiendo imagen a Cloudinary: " + e.getMessage());
                 }
             }
-        } else if (dto.getImagenesUrls() != null && !dto.getImagenesUrls().isEmpty()) {
-            // Mantener las URLs existentes (caso de que no se suban nuevas)
-            producto.getImagenes().clear();
-            for (String url : dto.getImagenesUrls()) {
-                ProductoImagen imagenEntity = ProductoImagen.builder()
-                        .imagenUrl(url)
-                        .producto(producto)
-                        .esPrincipal(producto.getImagenes().isEmpty())
-                        .build();
-                producto.getImagenes().add(imagenEntity);
-            }
         }
 
         ProductoEntity actualizado = productoRepository.save(producto);
+
+        // Registrar cambio de precio si es diferente
         if (precioAnterior.compareTo(dto.getPrecio()) != 0) {
             historialPrecioService.registrarCambioPrecio(id, dto.getPrecio());
         }
+
         return mapearAResponseDTO(actualizado);
     }
 
@@ -206,5 +210,14 @@ public class ProductoImpl implements ProductoService {
                 .nombreCategoria(entity.getCategoria().getNombre())
                 .imagenesUrls(urls)
                 .build();
+    }
+
+    // ProductoImpl.java
+    @Override
+    @Transactional(readOnly = true)
+    public Long obtenerStock(Long idProducto) {
+        ProductoEntity producto = productoRepository.findById(idProducto)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+        return producto.getStock();
     }
 }

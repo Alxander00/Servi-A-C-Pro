@@ -20,4 +20,5 @@ public interface ProductoService {
     ProductoResponseDTO crearConImagenes(ProductoRequestDTO dto, List<MultipartFile> imagenes);
     ProductoResponseDTO actualizarConImagenes(Long id, ProductoRequestDTO dto, List<MultipartFile> nuevasImagenes);
     List<ProductoResponseDTO> listarActivosOrdenadosPorPopularidad();
+    Long obtenerStock(Long idProducto);
 }
