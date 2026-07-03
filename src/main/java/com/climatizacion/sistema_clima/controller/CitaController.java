@@ -11,6 +11,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,9 +35,14 @@ public class CitaController {
         return ResponseEntity.ok(citaService.obtenerTodas());
     }
 
+    // Ahora acepta page y size
     @GetMapping("/tecnico/{idTecnico}")
-    public ResponseEntity<List<CitaResponseDTO>> listarPorTecnico(@PathVariable Long idTecnico) {
-        return ResponseEntity.ok(citaService.obtenerPorTecnico(idTecnico));
+    public ResponseEntity<Page<CitaResponseDTO>> listarPorTecnico(
+            @PathVariable Long idTecnico,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(citaService.obtenerPorTecnico(idTecnico, pageable));
     }
 
     @PostMapping
@@ -58,12 +66,10 @@ public class CitaController {
             @PathVariable Long idCliente,
             Authentication authentication) {
 
-        // Obtener el usuario autenticado
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         Long idUsuarioAutenticado = userDetails.getIdUsuario();
         String rol = userDetails.getAuthorities().iterator().next().getAuthority();
 
-        // Si es CLIENTE, solo puede ver sus propias citas
         if (rol.equals("CLIENTE") && !idUsuarioAutenticado.equals(idCliente)) {
             throw new RuntimeException("No tienes permiso para ver las citas de otro usuario");
         }
@@ -84,13 +90,10 @@ public class CitaController {
             @RequestParam(value = "fotosAntes", required = false) List<MultipartFile> fotosAntes,
             @RequestParam(value = "fotosDespues", required = false) List<MultipartFile> fotosDespues,
             @RequestParam(value = "firma", required = false) String firmaBase64,
-            // 👇 NUEVO PARÁMETRO PARA LOS REPUESTOS 👇
             @RequestParam(value = "repuestos", required = false) String repuestosJson) {
 
-        // 1. Guardar el estado, notas, fotos y firma (Tu código actual que ya funciona)
         citaService.guardarReporteTecnico(id, estado, notas, fotosAntes, fotosDespues, firmaBase64);
 
-        // 2. 👇 NUEVA LÓGICA: Procesar repuestos si el técnico envió alguno 👇
         if (repuestosJson != null && !repuestosJson.isEmpty() && !repuestosJson.equals("[]")) {
             try {
                 ObjectMapper mapper = new ObjectMapper();

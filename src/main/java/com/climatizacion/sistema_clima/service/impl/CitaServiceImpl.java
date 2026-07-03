@@ -12,6 +12,8 @@ import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.CitaService;
 import com.climatizacion.sistema_clima.service.ResendEmailService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,14 +43,22 @@ public class CitaServiceImpl implements CitaService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
+    // ✅ NUEVO MÉTODO CON PAGINACIÓN
     @Override
     @Transactional(readOnly = true)
-    public List<CitaResponseDTO> obtenerPorTecnico(Long idTecnico) {
-        return citaRepository.findByTecnico_IdUsuarioWithFetch(idTecnico).stream()
-                .map(this::mapToResponseDTO)
-                .collect(Collectors.toList());
+    public Page<CitaResponseDTO> obtenerPorTecnico(Long idTecnico, Pageable pageable) {
+        return citaRepository.findByTecnico_IdUsuario(idTecnico, pageable)
+                .map(this::mapToResponseDTO);
     }
+
+    // ✅ MANTENEMOS EL MÉTODO ANTERIOR POR SI ACASO (PERO YA NO SE USA DESDE EL CONTROLLER)
+    // @Override
+    // @Transactional(readOnly = true)
+    // public List<CitaResponseDTO> obtenerPorTecnico(Long idTecnico) {
+    //     return citaRepository.findByTecnico_IdUsuarioWithFetch(idTecnico).stream()
+    //             .map(this::mapToResponseDTO)
+    //             .collect(Collectors.toList());
+    // }
 
     @Override
     @Transactional
@@ -131,7 +141,6 @@ public class CitaServiceImpl implements CitaService {
                 .build();
     }
 
-    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
     @Override
     @Transactional(readOnly = true)
     public List<CitaResponseDTO> obtenerPorCliente(Long idCliente) {

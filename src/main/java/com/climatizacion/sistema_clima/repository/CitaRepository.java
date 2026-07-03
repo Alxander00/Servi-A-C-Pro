@@ -2,6 +2,8 @@ package com.climatizacion.sistema_clima.repository;
 
 import com.climatizacion.sistema_clima.entities.CitaEntity;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,10 +14,11 @@ import java.util.List;
 @Repository
 public interface CitaRepository extends JpaRepository<CitaEntity, Long> {
     List<CitaEntity> findByTecnico_IdUsuario(Long idTecnico);
+    Page<CitaEntity> findByTecnico_IdUsuario(Long idTecnico, Pageable pageable); // ✅ NUEVO
+
     List<CitaEntity> findByCliente_IdUsuario(Long idCliente);
     long countByCliente_IdUsuarioAndEstadoIn(Long idCliente, List<EstadoCita> estados);
 
-    // CitaRepository.java
     @Query("SELECT c FROM CitaEntity c JOIN FETCH c.cliente JOIN FETCH c.tecnico WHERE c.tecnico.idUsuario = :idTecnico")
     List<CitaEntity> findByTecnico_IdUsuarioWithFetch(@Param("idTecnico") Long idTecnico);
 

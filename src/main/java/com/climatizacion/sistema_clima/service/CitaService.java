@@ -3,13 +3,15 @@ package com.climatizacion.sistema_clima.service;
 import com.climatizacion.sistema_clima.dto.CitaRequestDTO;
 import com.climatizacion.sistema_clima.dto.CitaResponseDTO;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface CitaService {
     List<CitaResponseDTO> obtenerTodas();
-    List<CitaResponseDTO> obtenerPorTecnico(Long idTecnico);
+    Page<CitaResponseDTO> obtenerPorTecnico(Long idTecnico, Pageable pageable);
     CitaResponseDTO crear(CitaRequestDTO request);
     CitaResponseDTO actualizar(Long id, CitaRequestDTO request);
     void cambiarEstado(Long id, String estado);
