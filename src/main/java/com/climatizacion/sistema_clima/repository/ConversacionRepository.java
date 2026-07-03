@@ -12,10 +12,13 @@ import java.util.Optional;
 @Repository
 public interface ConversacionRepository extends JpaRepository<ConversacionEntity, Long> {
 
-    // Buscar conversación por cliente y técnico
+    // Buscar por cliente, técnico y cita (nuevo)
+    Optional<ConversacionEntity> findByIdClienteAndIdTecnicoAndIdCita(Long idCliente, Long idTecnico, Long idCita);
+
+    // Buscar solo por cliente y técnico (se mantiene por si acaso)
     Optional<ConversacionEntity> findByIdClienteAndIdTecnico(Long idCliente, Long idTecnico);
 
-    // Obtener todas las conversaciones de un usuario (cliente o técnico)
+    // Obtener todas las conversaciones de un usuario
     @Query("SELECT c FROM ConversacionEntity c WHERE c.idCliente = :idUsuario OR c.idTecnico = :idUsuario")
     List<ConversacionEntity> findConversacionesByUsuario(@Param("idUsuario") Long idUsuario);
 }

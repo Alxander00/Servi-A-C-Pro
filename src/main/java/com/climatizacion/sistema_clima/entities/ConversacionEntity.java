@@ -26,6 +26,10 @@ public class ConversacionEntity {
     @Column(name = "id_tecnico", nullable = false)
     private Long idTecnico;
 
+    // Asociamos la conversación a una cita específica
+    @Column(name = "id_cita")
+    private Long idCita;  // puede ser null si queremos conversaciones globales
+
     @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime fechaCreacion;
 }

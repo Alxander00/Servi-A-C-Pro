@@ -10,6 +10,7 @@ import com.climatizacion.sistema_clima.repository.ConversacionRepository;
 import com.climatizacion.sistema_clima.repository.MensajeRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -167,26 +168,39 @@ public class ChatController {
     }
 
     @PostMapping("/api/conversaciones/iniciar")
-    public ConversacionEntity iniciarConversacion(@RequestBody Map<String, Long> payload, Authentication authentication) {
+    public ResponseEntity<ConversacionEntity> iniciarConversacion(@RequestBody Map<String, Long> payload, Authentication authentication) {
+        // 1. Obtener usuario autenticado
         String email = authentication.getName();
         UsuarioEntity usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuario no autenticado"));
 
+        // 2. Extraer datos del payload
         Long idCliente = payload.get("idCliente");
         Long idTecnico = payload.get("idTecnico");
+        Long idCita = payload.get("idCita");
 
-        if (!usuario.getIdUsuario().equals(idCliente) && !usuario.getIdUsuario().equals(idTecnico)) {
-            throw new RuntimeException("No puedes crear esta conversación");
+        // 3. Validar que lleguen todos los campos obligatorios
+        if (idCliente == null || idTecnico == null || idCita == null) {
+            throw new RuntimeException("Faltan datos: idCliente, idTecnico e idCita son obligatorios");
         }
 
-        return conversacionRepository.findByIdClienteAndIdTecnico(idCliente, idTecnico)
+        // 4. Verificar que el usuario autenticado sea parte de la conversación
+        if (!usuario.getIdUsuario().equals(idCliente) && !usuario.getIdUsuario().equals(idTecnico)) {
+            throw new RuntimeException("No tienes permiso para crear esta conversación");
+        }
+
+        // 5. Buscar conversación existente para esta cita específica
+        return conversacionRepository.findByIdClienteAndIdTecnicoAndIdCita(idCliente, idTecnico, idCita)
+                .map(ResponseEntity::ok)
                 .orElseGet(() -> {
+                    // 6. Crear nueva conversación con idCita
                     ConversacionEntity conversacion = ConversacionEntity.builder()
                             .idCliente(idCliente)
                             .idTecnico(idTecnico)
+                            .idCita(idCita)
                             .fechaCreacion(LocalDateTime.now())
                             .build();
-                    return conversacionRepository.save(conversacion);
+                    return ResponseEntity.ok(conversacionRepository.save(conversacion));
                 });
     }
 }
