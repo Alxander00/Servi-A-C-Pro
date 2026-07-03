@@ -10,14 +10,17 @@ import com.climatizacion.sistema_clima.repository.DetallePedidoRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.ProductoRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
-import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.PedidoService;
+import com.climatizacion.sistema_clima.service.ResendEmailService;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -44,17 +47,14 @@ public class PedidoServiceImpl implements PedidoService {
         PedidoEntity pedidoGuardado = repository.save(pedido);
 
         for (DetallePedidoRequestDTO item : dto.getItems()) {
-            // Validar que el producto existe (para lanzar error si no)
             ProductoEntity producto = productoRepository.findById(item.getIdProducto())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-            // Descontar stock en la base de datos
             int rowsUpdated = productoRepository.descontarStock(item.getIdProducto(), item.getCantidad());
             if (rowsUpdated == 0) {
                 throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
             }
 
-            // Crear el detalle del pedido
             DetallePedidoEntity detalle = new DetallePedidoEntity();
             detalle.setPedido(pedidoGuardado);
             detalle.setProducto(producto);
@@ -63,7 +63,6 @@ public class PedidoServiceImpl implements PedidoService {
             detallePedidoRepository.save(detalle);
         }
 
-        // Notificación por correo
         try {
             UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedidoGuardado.getIdUsuario()))
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -126,5 +125,31 @@ public class PedidoServiceImpl implements PedidoService {
     @Override
     public long contarPedidosPorEstadoYUsuario(Long idUsuario, List<String> estados) {
         return repository.countByIdUsuarioAndEstadoIn(idUsuario, estados);
+    }
+
+    @Override
+    public List<PedidoEntity> listarConFiltros(LocalDateTime fechaInicio, LocalDateTime fechaFin,
+                                               String estado, Long idCliente, String emailCliente) {
+        Specification<PedidoEntity> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (fechaInicio != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("fechaPedido"), fechaInicio));
+            }
+            if (fechaFin != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("fechaPedido"), fechaFin));
+            }
+            if (estado != null && !estado.isEmpty()) {
+                predicates.add(cb.equal(root.get("estado"), estado));
+            }
+            if (idCliente != null) {
+                predicates.add(cb.equal(root.get("idUsuario"), idCliente));
+            }
+            // El emailCliente se maneja en el controlador (convertir a idCliente)
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return repository.findAll(spec);
     }
 }

@@ -2,11 +2,14 @@ package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.PedidoRequestDTO;
 import com.climatizacion.sistema_clima.entities.PedidoEntity;
+import com.climatizacion.sistema_clima.entities.UsuarioEntity;
+import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.PedidoService;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -18,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/pedidos")
@@ -25,6 +29,7 @@ import java.util.Map;
 public class PedidoController {
 
     private final PedidoService service;
+    private final UsuarioRepository usuarioRepository;
 
     @PostMapping
     public ResponseEntity<?> crearPedidoCompleto(@RequestBody PedidoRequestDTO dto) {
@@ -61,187 +66,26 @@ public class PedidoController {
         return ResponseEntity.noContent().build();
     }
 
+    // ===== EXPORTAR EXCEL CON FILTROS =====
     @GetMapping("/exportar/excel")
-    public ResponseEntity<byte[]> exportarPedidosAExcel() {
+    public ResponseEntity<byte[]> exportarPedidosAExcel(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) Long idCliente,
+            @RequestParam(required = false) String emailCliente) {
+
+        // Si se proporciona email, buscar el ID del cliente
+        if (emailCliente != null && !emailCliente.isEmpty() && idCliente == null) {
+            UsuarioEntity usuario = usuarioRepository.findByEmail(emailCliente).orElse(null);
+            if (usuario != null) {
+                idCliente = usuario.getIdUsuario();
+            }
+        }
+
         try {
-            List<PedidoEntity> pedidos = service.listar();
-            Workbook workbook = new XSSFWorkbook();
-            Sheet sheet = workbook.createSheet("Reporte de Ventas");
-
-            // --- 1. CONFIGURACIÓN DE ESTILOS ---
-
-            // Estilo Título
-            CellStyle titleStyle = workbook.createCellStyle();
-            Font titleFont = workbook.createFont();
-            titleFont.setBold(true);
-            titleFont.setFontHeightInPoints((short) 16);
-            titleFont.setColor(IndexedColors.DARK_BLUE.getIndex());
-            titleStyle.setFont(titleFont);
-            titleStyle.setAlignment(HorizontalAlignment.CENTER);
-            titleStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-
-            // Estilo Subtítulo (Fecha de generación)
-            CellStyle subtitleStyle = workbook.createCellStyle();
-            Font subtitleFont = workbook.createFont();
-            subtitleFont.setItalic(true);
-            subtitleFont.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
-            subtitleStyle.setFont(subtitleFont);
-            subtitleStyle.setAlignment(HorizontalAlignment.RIGHT);
-
-            // Estilo Encabezados
-            CellStyle headerStyle = workbook.createCellStyle();
-            headerStyle.setFillForegroundColor(IndexedColors.ROYAL_BLUE.getIndex());
-            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            headerStyle.setAlignment(HorizontalAlignment.CENTER);
-            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            headerStyle.setBorderBottom(BorderStyle.THIN);
-            headerStyle.setBorderTop(BorderStyle.THIN);
-            headerStyle.setBorderLeft(BorderStyle.THIN);
-            headerStyle.setBorderRight(BorderStyle.THIN);
-            Font headerFont = workbook.createFont();
-            headerFont.setColor(IndexedColors.WHITE.getIndex());
-            headerFont.setBold(true);
-            headerStyle.setFont(headerFont);
-
-            // Estilo Datos Normales
-            CellStyle dataStyle = workbook.createCellStyle();
-            dataStyle.setBorderBottom(BorderStyle.THIN);
-            dataStyle.setBorderTop(BorderStyle.THIN);
-            dataStyle.setBorderLeft(BorderStyle.THIN);
-            dataStyle.setBorderRight(BorderStyle.THIN);
-            dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-
-            // Estilo Moneda
-            CellStyle currencyStyle = workbook.createCellStyle();
-            currencyStyle.cloneStyleFrom(dataStyle);
-            DataFormat format = workbook.createDataFormat();
-            currencyStyle.setDataFormat(format.getFormat("$#,##0.00"));
-            currencyStyle.setAlignment(HorizontalAlignment.RIGHT);
-
-            // Estilo Fechas
-            CellStyle dateStyle = workbook.createCellStyle();
-            dateStyle.cloneStyleFrom(dataStyle);
-            dateStyle.setDataFormat(format.getFormat("dd/MM/yyyy HH:mm"));
-            dateStyle.setAlignment(HorizontalAlignment.CENTER);
-
-            // Estilo Fila de Totales (Resaltado)
-            CellStyle totalLabelStyle = workbook.createCellStyle();
-            totalLabelStyle.cloneStyleFrom(dataStyle);
-            totalLabelStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
-            totalLabelStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            totalLabelStyle.setAlignment(HorizontalAlignment.RIGHT);
-            Font boldFont = workbook.createFont();
-            boldFont.setBold(true);
-            totalLabelStyle.setFont(boldFont);
-
-            CellStyle totalValueStyle = workbook.createCellStyle();
-            totalValueStyle.cloneStyleFrom(currencyStyle);
-            totalValueStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
-            totalValueStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            totalValueStyle.setFont(boldFont);
-
-            // --- 2. CONSTRUCCIÓN DEL REPORTE ---
-
-            // Fila 0: Título Grande Combinado
-            Row titleRow = sheet.createRow(0);
-            titleRow.setHeightInPoints(30);
-            Cell titleCell = titleRow.createCell(0);
-            titleCell.setCellValue("REPORTE OFICIAL DE VENTAS - CLIMAPRO");
-            titleCell.setCellStyle(titleStyle);
-            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 6));
-
-            // Fila 1: Subtítulo con fecha
-            Row subtitleRow = sheet.createRow(1);
-            Cell subtitleCell = subtitleRow.createCell(0);
-            String fechaActual = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
-            subtitleCell.setCellValue("Generado el: " + fechaActual);
-            subtitleCell.setCellStyle(subtitleStyle);
-            sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 6));
-
-            // Fila 3: Encabezados de Tabla (Dejamos la fila 2 vacía para dar aire)
-            Row headerRow = sheet.createRow(3);
-            String[] columnas = {"Factura ID", "Cliente ID", "Fecha de Compra", "Total Pagado", "Instalación", "Estado", "Dirección"};
-            for (int i = 0; i < columnas.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(columnas[i]);
-                cell.setCellStyle(headerStyle);
-            }
-
-            // Congelar el panel superior (Para que al hacer scroll, el título y encabezados no se pierdan)
-            sheet.createFreezePane(0, 4);
-
-            // Variables para sumar los totales
-            double sumaTotalIngresos = 0.0;
-            int totalOrdenes = pedidos.size();
-
-            // Filas de Datos
-            int rowNum = 4;
-            for (PedidoEntity p : pedidos) {
-                Row row = sheet.createRow(rowNum++);
-
-                row.createCell(0).setCellValue(p.getIdPedido());
-                row.getCell(0).setCellStyle(dataStyle);
-
-                row.createCell(1).setCellValue(p.getIdUsuario());
-                row.getCell(1).setCellStyle(dataStyle);
-
-                Cell cellFecha = row.createCell(2);
-                if (p.getFechaPedido() != null) {
-                    cellFecha.setCellValue(java.sql.Timestamp.valueOf(p.getFechaPedido()));
-                }
-                cellFecha.setCellStyle(dateStyle);
-
-                double totalPedido = p.getTotal() != null ? p.getTotal() : 0.0;
-                sumaTotalIngresos += totalPedido; // Acumulamos el total
-
-                Cell cellTotal = row.createCell(3);
-                cellTotal.setCellValue(totalPedido);
-                cellTotal.setCellStyle(currencyStyle);
-
-                Cell cellInstalacion = row.createCell(4);
-                cellInstalacion.setCellValue(p.getIncluyeInstalacion() != null && p.getIncluyeInstalacion() ? "SÍ" : "NO");
-                cellInstalacion.setCellStyle(dataStyle);
-
-                Cell cellEstado = row.createCell(5);
-                cellEstado.setCellValue(p.getEstado() != null ? p.getEstado() : "");
-                cellEstado.setCellStyle(dataStyle);
-
-                Cell cellDireccion = row.createCell(6);
-                cellDireccion.setCellValue(p.getDireccion() != null ? p.getDireccion() : "");
-                cellDireccion.setCellStyle(dataStyle);
-            }
-
-            // --- 3. FILA DE RESUMEN (TOTALES) ---
-            Row summaryRow = sheet.createRow(rowNum);
-
-            // Etiqueta del total (Combinamos de la columna 0 a la 2)
-            Cell summaryLabelCell = summaryRow.createCell(0);
-            summaryLabelCell.setCellValue("TOTAL RECAUDADO (" + totalOrdenes + " pedidos):");
-            summaryLabelCell.setCellStyle(totalLabelStyle);
-            sheet.addMergedRegion(new CellRangeAddress(rowNum, rowNum, 0, 2));
-
-            // Aplicar estilo a las celdas combinadas para que no se pierda el borde
-            for (int i = 1; i <= 2; i++) {
-                summaryRow.createCell(i).setCellStyle(totalLabelStyle);
-            }
-
-            // El valor sumado de todo el dinero
-            Cell summaryValueCell = summaryRow.createCell(3);
-            summaryValueCell.setCellValue(sumaTotalIngresos);
-            summaryValueCell.setCellStyle(totalValueStyle);
-
-            // Aplicar estilo vacío al resto de la fila para mantener la estética
-            for (int i = 4; i < columnas.length; i++) {
-                Cell emptyCell = summaryRow.createCell(i);
-                emptyCell.setCellStyle(totalLabelStyle);
-            }
-
-            // --- 4. AUTO-AJUSTE DE COLUMNAS ---
-            for (int i = 0; i < columnas.length; i++) {
-                sheet.autoSizeColumn(i);
-                int currentWidth = sheet.getColumnWidth(i);
-                sheet.setColumnWidth(i, currentWidth + 1200); // Margen extra
-            }
+            List<PedidoEntity> pedidos = service.listarConFiltros(fechaInicio, fechaFin, estado, idCliente, emailCliente);
+            Workbook workbook = generarExcel(pedidos, fechaInicio, fechaFin, estado, idCliente, emailCliente);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             workbook.write(out);
@@ -249,13 +93,186 @@ public class PedidoController {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "Reporte_Ventas_ClimaPro.xlsx");
+            String filename = "Reporte_Pedidos_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx";
+            headers.setContentDispositionFormData("attachment", filename);
 
             return new ResponseEntity<>(out.toByteArray(), headers, HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private Workbook generarExcel(List<PedidoEntity> pedidos, LocalDateTime fechaInicio, LocalDateTime fechaFin,
+                                  String estado, Long idCliente, String emailCliente) {
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Reporte de Pedidos");
+
+        // Estilos (igual que antes)
+        CellStyle titleStyle = workbook.createCellStyle();
+        Font titleFont = workbook.createFont();
+        titleFont.setBold(true);
+        titleFont.setFontHeightInPoints((short) 16);
+        titleFont.setColor(IndexedColors.DARK_BLUE.getIndex());
+        titleStyle.setFont(titleFont);
+        titleStyle.setAlignment(HorizontalAlignment.CENTER);
+        titleStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+        CellStyle subtitleStyle = workbook.createCellStyle();
+        Font subtitleFont = workbook.createFont();
+        subtitleFont.setItalic(true);
+        subtitleFont.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
+        subtitleStyle.setFont(subtitleFont);
+        subtitleStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFillForegroundColor(IndexedColors.ROYAL_BLUE.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        headerStyle.setBorderTop(BorderStyle.THIN);
+        headerStyle.setBorderLeft(BorderStyle.THIN);
+        headerStyle.setBorderRight(BorderStyle.THIN);
+        Font headerFont = workbook.createFont();
+        headerFont.setColor(IndexedColors.WHITE.getIndex());
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+
+        CellStyle dataStyle = workbook.createCellStyle();
+        dataStyle.setBorderBottom(BorderStyle.THIN);
+        dataStyle.setBorderTop(BorderStyle.THIN);
+        dataStyle.setBorderLeft(BorderStyle.THIN);
+        dataStyle.setBorderRight(BorderStyle.THIN);
+        dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+        CellStyle currencyStyle = workbook.createCellStyle();
+        currencyStyle.cloneStyleFrom(dataStyle);
+        DataFormat format = workbook.createDataFormat();
+        currencyStyle.setDataFormat(format.getFormat("$#,##0.00"));
+        currencyStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+        CellStyle dateStyle = workbook.createCellStyle();
+        dateStyle.cloneStyleFrom(dataStyle);
+        dateStyle.setDataFormat(format.getFormat("dd/MM/yyyy HH:mm"));
+        dateStyle.setAlignment(HorizontalAlignment.CENTER);
+
+        CellStyle totalLabelStyle = workbook.createCellStyle();
+        totalLabelStyle.cloneStyleFrom(dataStyle);
+        totalLabelStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+        totalLabelStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        totalLabelStyle.setAlignment(HorizontalAlignment.RIGHT);
+        Font boldFont = workbook.createFont();
+        boldFont.setBold(true);
+        totalLabelStyle.setFont(boldFont);
+
+        CellStyle totalValueStyle = workbook.createCellStyle();
+        totalValueStyle.cloneStyleFrom(currencyStyle);
+        totalValueStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+        totalValueStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        totalValueStyle.setFont(boldFont);
+
+        // Título
+        Row titleRow = sheet.createRow(0);
+        titleRow.setHeightInPoints(30);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("REPORTE DE PEDIDOS - SERVIA/C PRO");
+        titleCell.setCellStyle(titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 7));
+
+        // Subtítulo con filtros
+        Row subtitleRow = sheet.createRow(1);
+        Cell subtitleCell = subtitleRow.createCell(0);
+        StringBuilder filtros = new StringBuilder("Generado el: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
+        if (fechaInicio != null) filtros.append(" | Desde: ").append(fechaInicio.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        if (fechaFin != null) filtros.append(" | Hasta: ").append(fechaFin.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        if (estado != null && !estado.isEmpty()) filtros.append(" | Estado: ").append(estado);
+        if (idCliente != null) filtros.append(" | Cliente ID: ").append(idCliente);
+        if (emailCliente != null && !emailCliente.isEmpty()) filtros.append(" | Email: ").append(emailCliente);
+        subtitleCell.setCellValue(filtros.toString());
+        subtitleCell.setCellStyle(subtitleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 7));
+
+        // Encabezados
+        Row headerRow = sheet.createRow(3);
+        String[] columnas = {"Factura ID", "Cliente", "Email", "Fecha", "Total", "Instalación", "Estado", "Dirección"};
+        for (int i = 0; i < columnas.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(columnas[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        sheet.createFreezePane(0, 4);
+
+        double sumaTotal = 0.0;
+        int rowNum = 4;
+        for (PedidoEntity p : pedidos) {
+            Row row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(p.getIdPedido());
+            row.getCell(0).setCellStyle(dataStyle);
+
+            // En el método generarExcel()
+            // Buscar nombre y email del cliente
+            String nombreCliente = "N/A";
+            String emailClientePedido = "";
+            Optional<UsuarioEntity> optUsuario = usuarioRepository.findById(p.getIdUsuario());
+            if (optUsuario.isPresent()) {
+                UsuarioEntity u = optUsuario.get();
+                nombreCliente = u.getNombres() + " " + (u.getApellidos() != null ? u.getApellidos() : "");
+                emailClientePedido = u.getEmail();
+            }
+            row.createCell(1).setCellValue(nombreCliente);
+            row.getCell(1).setCellStyle(dataStyle);
+            row.createCell(2).setCellValue(emailClientePedido);
+            row.getCell(2).setCellStyle(dataStyle);
+
+            Cell cellFecha = row.createCell(3);
+            if (p.getFechaPedido() != null) {
+                cellFecha.setCellValue(java.sql.Timestamp.valueOf(p.getFechaPedido()));
+            }
+            cellFecha.setCellStyle(dateStyle);
+
+            double total = p.getTotal() != null ? p.getTotal() : 0.0;
+            sumaTotal += total;
+            Cell cellTotal = row.createCell(4);
+            cellTotal.setCellValue(total);
+            cellTotal.setCellStyle(currencyStyle);
+
+            row.createCell(5).setCellValue(p.getIncluyeInstalacion() != null && p.getIncluyeInstalacion() ? "SÍ" : "NO");
+            row.getCell(5).setCellStyle(dataStyle);
+
+            row.createCell(6).setCellValue(p.getEstado() != null ? p.getEstado() : "");
+            row.getCell(6).setCellStyle(dataStyle);
+
+            row.createCell(7).setCellValue(p.getDireccion() != null ? p.getDireccion() : "");
+            row.getCell(7).setCellStyle(dataStyle);
+        }
+
+        Row summaryRow = sheet.createRow(rowNum);
+        Cell summaryLabelCell = summaryRow.createCell(0);
+        summaryLabelCell.setCellValue("TOTAL RECAUDADO (" + pedidos.size() + " pedidos):");
+        summaryLabelCell.setCellStyle(totalLabelStyle);
+        sheet.addMergedRegion(new CellRangeAddress(rowNum, rowNum, 0, 3));
+
+        for (int i = 1; i <= 3; i++) {
+            summaryRow.createCell(i).setCellStyle(totalLabelStyle);
+        }
+
+        Cell summaryValueCell = summaryRow.createCell(4);
+        summaryValueCell.setCellValue(sumaTotal);
+        summaryValueCell.setCellStyle(totalValueStyle);
+
+        for (int i = 5; i < columnas.length; i++) {
+            summaryRow.createCell(i).setCellStyle(totalLabelStyle);
+        }
+
+        for (int i = 0; i < columnas.length; i++) {
+            sheet.autoSizeColumn(i);
+            int currentWidth = sheet.getColumnWidth(i);
+            sheet.setColumnWidth(i, Math.min(currentWidth + 1200, 20000));
+        }
+
+        return workbook;
     }
 
     @GetMapping("/conteos/pendientes/cliente/{idUsuario}")
