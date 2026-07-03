@@ -54,6 +54,13 @@ public class CitaEntity {
     @Column(name = "url_firma_cliente", columnDefinition = "TEXT")
     private String urlFirmaCliente;
 
+    // En CitaEntity.java
+    @Column(name = "tipo_servicio", length = 50)
+    private String tipoServicio;
+
+    @Column(name = "mensaje_cliente", columnDefinition = "TEXT")
+    private String mensajeCliente;
+
     @OneToMany(mappedBy = "cita", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UsoRepuestoEntity> repuestosUtilizados = new ArrayList<>();
 

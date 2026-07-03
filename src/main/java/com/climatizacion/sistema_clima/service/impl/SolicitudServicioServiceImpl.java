@@ -100,6 +100,8 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                 .fechaFin(fechaFin)
                 .estado(EstadoCita.PROGRAMADA)
                 .notas(solicitud.getMensaje())
+                .tipoServicio(solicitud.getTipoServicio())
+                .mensajeCliente(solicitud.getMensaje())
                 .build();
         citaRepository.save(cita);
 

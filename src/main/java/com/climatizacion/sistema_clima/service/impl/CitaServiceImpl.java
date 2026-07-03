@@ -126,6 +126,8 @@ public class CitaServiceImpl implements CitaService {
                 .urlsFotosAntes(entity.getUrlsFotosAntes())
                 .urlsFotosDespues(entity.getUrlsFotosDespues())
                 .urlFirmaCliente(entity.getUrlFirmaCliente())
+                .tipoServicio(entity.getTipoServicio())
+                .mensajeCliente(entity.getMensajeCliente())
                 .build();
     }
 

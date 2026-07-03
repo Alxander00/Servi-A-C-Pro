@@ -22,4 +22,6 @@ public class CitaResponseDTO {
     private String urlsFotosAntes;
     private String urlsFotosDespues;
     private String urlFirmaCliente;
+    private String tipoServicio;
+    private String mensajeCliente;
 }
