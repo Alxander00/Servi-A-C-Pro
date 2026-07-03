@@ -42,12 +42,11 @@ public class AuthController {
                 return ResponseEntity.status(401).body(Map.of("message", "Contraseña incorrecta"));
             }
 
-            // Obtener entidad completa para generar refresh token
             UsuarioEntity usuarioEntity = usuarioRepository.findById(user.getIdUsuario())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            // Generar Access Token
-            String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRol().name());
+            // ✅ Generar Access Token con ID
+            String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRol().name(), user.getIdUsuario());
 
             // Generar Refresh Token
             RefreshTokenEntity refreshTokenEntity = refreshTokenService.crearRefreshToken(usuarioEntity);

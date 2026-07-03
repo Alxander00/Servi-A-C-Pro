@@ -5,6 +5,7 @@ import com.climatizacion.sistema_clima.dto.SolicitudResponseDTO;
 import com.climatizacion.sistema_clima.entities.*;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.repository.*;
+import com.climatizacion.sistema_clima.service.NotificacionService;
 import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.SolicitudServicioService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     private final CitaRepository citaRepository;
     private final UsuarioRepository usuarioRepository;
     private final ResendEmailService resendEmailService;
+    private final NotificacionService notificacionService;
 
     @Value("${admin.email:admin@climapro.com}")
     private String adminEmail;
@@ -82,11 +84,15 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     public void asignarTecnico(Long idSolicitud, Long idTecnico, LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         SolicitudServicioEntity solicitud = solicitudRepository.findById(idSolicitud)
                 .orElseThrow(() -> new RuntimeException("Solicitud no encontrada"));
+
         if (!"PENDIENTE".equals(solicitud.getEstado())) {
             throw new RuntimeException("La solicitud ya fue procesada");
         }
+
         UsuarioEntity tecnico = usuarioRepository.findById(idTecnico)
                 .orElseThrow(() -> new RuntimeException("Técnico no encontrado"));
+
+        // Crear y guardar la cita
         CitaEntity cita = CitaEntity.builder()
                 .cliente(solicitud.getCliente())
                 .tecnico(tecnico)
@@ -96,9 +102,28 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                 .notas(solicitud.getMensaje())
                 .build();
         citaRepository.save(cita);
+
+        // Actualizar estado de la solicitud
         solicitud.setEstado("ASIGNADA");
         solicitudRepository.save(solicitud);
 
+        // ===== CREAR NOTIFICACIÓN EN LA BASE DE DATOS =====
+        try {
+            String mensajeNotificacion = "Nueva cita asignada con " +
+                    solicitud.getCliente().getNombres() + " " + solicitud.getCliente().getApellidos() +
+                    " a las " + fechaInicio.format(DateTimeFormatter.ofPattern("HH:mm"));
+
+            notificacionService.crearNotificacion(
+                    tecnico,
+                    mensajeNotificacion,
+                    "CITA_ASIGNADA",
+                    "tecnico.html?cita=" + cita.getIdCita() // 👈 AQUÍ ESTÁ EL CAMBIO MÁGICO
+            );
+        } catch (Exception e) {
+            System.err.println("⚠️ No se pudo crear la notificación para el técnico ID " + idTecnico + " - " + e.getMessage());
+        }
+
+        // ===== ENVIAR CORREO ELECTRÓNICO =====
         try {
             String fechaFormateada = fechaInicio.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
             resendEmailService.enviarCorreoNuevaCita(

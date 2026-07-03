@@ -32,6 +32,10 @@ public class JwtUtil {
         return extractClaim(token, Claims::getSubject);
     }
 
+    public Long extractIdUsuario(String token) {
+        return extractClaim(token, claims -> claims.get("idUsuario", Long.class));
+    }
+
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
@@ -53,10 +57,17 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(String email, String rol) {
+    // 👇 Métodos actualizados para incluir ID del usuario
+    public String generateToken(String email, String rol, Long idUsuario) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("rol", rol);
+        claims.put("idUsuario", idUsuario);
         return createToken(claims, email);
+    }
+
+    // Mantener compatibilidad con el login antiguo (sin ID)
+    public String generateToken(String email, String rol) {
+        return generateToken(email, rol, null);
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
