@@ -10,6 +10,8 @@ import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.SolicitudServicioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -170,5 +172,11 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     @Override
     public long contarPendientesPorCliente(Long idCliente) {
         return solicitudRepository.countByCliente_IdUsuarioAndEstado(idCliente, "PENDIENTE");
+    }
+
+    @Override
+    public Page<SolicitudResponseDTO> listarPorClientePaginado(Long idCliente, Pageable pageable) {
+        return solicitudRepository.findByCliente_IdUsuario(idCliente, pageable)
+                .map(this::mapToResponseDTO);
     }
 }

@@ -12,6 +12,7 @@ import java.util.List;
 public interface CitaService {
     List<CitaResponseDTO> obtenerTodas();
     Page<CitaResponseDTO> obtenerPorTecnico(Long idTecnico, Pageable pageable);
+    Page<CitaResponseDTO> obtenerPorClientePaginado(Long idCliente, Pageable pageable);
     CitaResponseDTO crear(CitaRequestDTO request);
     CitaResponseDTO actualizar(Long id, CitaRequestDTO request);
     void cambiarEstado(Long id, String estado);

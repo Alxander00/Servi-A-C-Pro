@@ -106,4 +106,23 @@ public class CitaController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/cliente/{idCliente}/paginado")
+    public ResponseEntity<Page<CitaResponseDTO>> listarPorClientePaginado(
+            @PathVariable Long idCliente,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
+            Authentication authentication) {
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Long idUsuarioAutenticado = userDetails.getIdUsuario();
+        String rol = userDetails.getAuthorities().iterator().next().getAuthority();
+
+        if (rol.equals("CLIENTE") && !idUsuarioAutenticado.equals(idCliente)) {
+            throw new RuntimeException("No tienes permiso para ver las citas de otro usuario");
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(citaService.obtenerPorClientePaginado(idCliente, pageable));
+    }
 }

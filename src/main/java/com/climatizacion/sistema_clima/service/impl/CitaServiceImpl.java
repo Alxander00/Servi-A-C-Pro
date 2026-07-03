@@ -234,4 +234,10 @@ public class CitaServiceImpl implements CitaService {
             throw e;
         }
     }
+
+    @Override
+    public Page<CitaResponseDTO> obtenerPorClientePaginado(Long idCliente, Pageable pageable) {
+        return citaRepository.findByCliente_IdUsuario(idCliente, pageable)
+                .map(this::mapToResponseDTO);
+    }
 }

@@ -8,6 +8,8 @@ import com.climatizacion.sistema_clima.repository.EquipoClienteRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.EquipoClienteService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -83,6 +85,12 @@ public class EquipoClienteServiceImpl implements EquipoClienteService {
     @Transactional
     public void eliminar(Long id) {
         equipoClienteRepository.deleteById(id);
+    }
+
+    @Override
+    public Page<EquipoClienteResponseDTO> obtenerPorClientePaginado(Long idCliente, Pageable pageable) {
+        return equipoClienteRepository.findByCliente_IdUsuario(idCliente, pageable)
+                .map(this::mapToResponseDTO);
     }
 
     private EquipoClienteResponseDTO mapToResponseDTO(EquipoClienteEntity entity) {

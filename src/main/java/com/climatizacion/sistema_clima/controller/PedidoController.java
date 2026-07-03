@@ -9,6 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -283,5 +286,14 @@ public class PedidoController {
     @GetMapping("/conteos/pendientes/admin")
     public ResponseEntity<Long> contarPedidosPendientesAdmin() {
         return ResponseEntity.ok(service.contarPedidosPorEstado(List.of("Pendiente", "En Proceso")));
+    }
+
+    @GetMapping("/usuario/{idUsuario}/paginado")
+    public ResponseEntity<Page<PedidoEntity>> listarPorUsuarioPaginado(
+            @PathVariable Long idUsuario,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(service.listarPorUsuarioPaginado(idUsuario, pageable));
     }
 }

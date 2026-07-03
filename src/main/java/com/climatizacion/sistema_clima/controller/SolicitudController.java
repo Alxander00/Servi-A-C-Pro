@@ -6,6 +6,9 @@ import com.climatizacion.sistema_clima.security.CustomUserDetails;
 import com.climatizacion.sistema_clima.service.SolicitudServicioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -141,5 +144,27 @@ public class SolicitudController {
         }
 
         return ResponseEntity.ok(solicitudService.contarPendientesPorCliente(idCliente));
+    }
+
+    @GetMapping("/cliente/{idCliente}/paginado")
+    public ResponseEntity<Page<SolicitudResponseDTO>> listarPorClientePaginado(
+            @PathVariable Long idCliente,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        if (userDetails == null) {
+            throw new RuntimeException("Usuario no autenticado");
+        }
+
+        String rol = userDetails.getAuthorities().iterator().next().getAuthority();
+        Long idUsuarioAutenticado = userDetails.getIdUsuario();
+
+        if ("CLIENTE".equals(rol) && !idUsuarioAutenticado.equals(idCliente)) {
+            throw new RuntimeException("No tienes permiso para ver las solicitudes de otro usuario");
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(solicitudService.listarPorClientePaginado(idCliente, pageable));
     }
 }

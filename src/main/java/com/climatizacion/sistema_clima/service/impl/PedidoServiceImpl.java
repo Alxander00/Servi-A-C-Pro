@@ -14,6 +14,8 @@ import com.climatizacion.sistema_clima.service.PedidoService;
 import com.climatizacion.sistema_clima.service.ResendEmailService;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -151,5 +153,10 @@ public class PedidoServiceImpl implements PedidoService {
         };
 
         return repository.findAll(spec);
+    }
+
+    @Override
+    public Page<PedidoEntity> listarPorUsuarioPaginado(Long idUsuario, Pageable pageable) {
+        return repository.findByIdUsuario(idUsuario, pageable);
     }
 }

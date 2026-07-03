@@ -5,6 +5,9 @@ import com.climatizacion.sistema_clima.dto.EquipoClienteResponseDTO;
 import com.climatizacion.sistema_clima.service.EquipoClienteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -42,5 +45,14 @@ public class EquipoClienteController {
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         equipoClienteService.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/cliente/{idCliente}/paginado")
+    public ResponseEntity<Page<EquipoClienteResponseDTO>> listarPorClientePaginado(
+            @PathVariable Long idCliente,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(equipoClienteService.obtenerPorClientePaginado(idCliente, pageable));
     }
 }
