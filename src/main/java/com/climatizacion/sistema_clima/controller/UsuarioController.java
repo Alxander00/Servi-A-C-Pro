@@ -1,8 +1,13 @@
 package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
+import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -73,5 +78,16 @@ public class UsuarioController {
 
         UsuarioDTO usuarioActualizado = usuarioService.actualizarAvatar(email, file);
         return ResponseEntity.ok(usuarioActualizado);
+    }
+
+    @GetMapping("/paginado")
+    public ResponseEntity<Page<UsuarioDTO>> listarUsuariosPaginados(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "") String rol) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("idUsuario").descending());
+        return ResponseEntity.ok(usuarioService.obtenerUsuariosPaginados(search, rol, pageable));
     }
 }

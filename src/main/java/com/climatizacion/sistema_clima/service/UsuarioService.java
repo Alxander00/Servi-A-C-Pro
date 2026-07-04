@@ -1,6 +1,8 @@
 package com.climatizacion.sistema_clima.service;
 
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -21,4 +23,5 @@ public interface UsuarioService {
     void enviarLinkRecuperacion(String email);
     void restablecerPassword(String token, String nuevaPassword);
     UsuarioDTO actualizarAvatar(String email, MultipartFile archivo);
+    Page<UsuarioDTO> obtenerUsuariosPaginados(String search, String rol, Pageable pageable);
 }

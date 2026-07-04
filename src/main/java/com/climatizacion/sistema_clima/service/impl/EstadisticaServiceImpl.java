@@ -38,7 +38,7 @@ public class EstadisticaServiceImpl implements EstadisticaService {
                 : BigDecimal.valueOf(((Number) ventasObj).doubleValue());
 
         long totalPedidos = pedidoRepository.count();
-        long totalProductos = productoRepository.count();
+        long totalProductos = productoRepository.countByActivoTrue();
         long totalClientes = usuarioRepository.count();
 
         Query ventasPorMesQuery = entityManager.createNativeQuery(

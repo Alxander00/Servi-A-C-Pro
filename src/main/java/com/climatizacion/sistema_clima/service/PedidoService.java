@@ -1,6 +1,7 @@
 package com.climatizacion.sistema_clima.service;
 
 import com.climatizacion.sistema_clima.dto.PedidoRequestDTO;
+import com.climatizacion.sistema_clima.dto.PedidoResponseDTO;
 import com.climatizacion.sistema_clima.entities.PedidoEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,8 @@ public interface PedidoService {
 
     long contarPedidosPorEstado(List<String> estados);
     long contarPedidosPorEstadoYUsuario(Long idUsuario, List<String> estados);
+
+    Page<PedidoResponseDTO> obtenerPedidosPaginados(String search, String estado, Pageable pageable);
 
     List<PedidoEntity> listarConFiltros(LocalDateTime fechaInicio, LocalDateTime fechaFin,
                                         String estado, Long idCliente, String emailCliente);

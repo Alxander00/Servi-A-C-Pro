@@ -2,6 +2,7 @@ package com.climatizacion.sistema_clima.service;
 
 import com.climatizacion.sistema_clima.dto.ProductoRequestDTO;
 import com.climatizacion.sistema_clima.dto.ProductoResponseDTO;
+import com.climatizacion.sistema_clima.entities.ProductoEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,4 +22,5 @@ public interface ProductoService {
     ProductoResponseDTO actualizarConImagenes(Long id, ProductoRequestDTO dto, List<MultipartFile> nuevasImagenes);
     List<ProductoResponseDTO> listarActivosOrdenadosPorPopularidad();
     Long obtenerStock(Long idProducto);
+    Page<ProductoResponseDTO> obtenerProductosPaginados(String search, String categoria, Pageable pageable);
 }

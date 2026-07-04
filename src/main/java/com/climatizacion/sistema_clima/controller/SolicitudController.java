@@ -167,4 +167,11 @@ public class SolicitudController {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(solicitudService.listarPorClientePaginado(idCliente, pageable));
     }
+
+    @GetMapping("/conteos/pendientes")
+    public ResponseEntity<Long> contarPendientes() {
+        // Si tu servicio no tiene este método, créalo para que retorne:
+        // solicitudRepository.countByEstado("PENDIENTE");
+        return ResponseEntity.ok(solicitudService.contarPendientes());
+    }
 }

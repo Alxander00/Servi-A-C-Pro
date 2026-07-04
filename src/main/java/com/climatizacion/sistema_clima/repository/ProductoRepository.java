@@ -15,6 +15,7 @@ import java.util.List;
 public interface ProductoRepository extends JpaRepository<ProductoEntity, Long> {
 
     Page<ProductoEntity> findByActivoTrue(Pageable pageable);
+    long countByActivoTrue();
 
     List<ProductoEntity> findByCategoria_IdCategoria(Long idCategoria);
 
@@ -27,4 +28,12 @@ public interface ProductoRepository extends JpaRepository<ProductoEntity, Long> 
     @Modifying
     @Query("UPDATE ProductoEntity p SET p.stock = p.stock - :cantidad WHERE p.idProducto = :id AND p.stock >= :cantidad")
     int descontarStock(@Param("id") Long id, @Param("cantidad") Long cantidad);
+
+    @Query("SELECT p FROM ProductoEntity p " +
+            "LEFT JOIN FETCH p.imagenes " +
+            "LEFT JOIN FETCH p.categoria " +
+            "WHERE p.activo = true " +
+            "AND (:search IS NULL OR :search = '' OR LOWER(p.nombre) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "AND (:categoria IS NULL OR :categoria = '' OR CAST(p.categoria.idCategoria AS string) = :categoria)")
+    Page<ProductoEntity> buscarActivosConFiltros(@Param("search") String search, @Param("categoria") String categoria, Pageable pageable);
 }

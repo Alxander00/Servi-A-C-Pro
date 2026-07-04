@@ -220,4 +220,11 @@ public class ProductoImpl implements ProductoService {
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         return producto.getStock();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductoResponseDTO> obtenerProductosPaginados(String search, String categoria, Pageable pageable) {
+        return productoRepository.buscarActivosConFiltros(search, categoria, pageable)
+                .map(this::mapearAResponseDTO);
+    }
 }

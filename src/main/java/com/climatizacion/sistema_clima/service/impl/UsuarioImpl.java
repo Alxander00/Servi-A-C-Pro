@@ -12,6 +12,8 @@ import com.climatizacion.sistema_clima.service.ResendEmailService;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -305,5 +307,12 @@ public class UsuarioImpl implements UsuarioService {
                 .direccion(usuario.getDireccion())
                 .fotoUrl(usuario.getFotoUrl())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UsuarioDTO> obtenerUsuariosPaginados(String search, String rol, Pageable pageable) {
+        return usuarioRepository.buscarConFiltros(search, rol, pageable)
+                .map(this::convertirADTO);
     }
 }

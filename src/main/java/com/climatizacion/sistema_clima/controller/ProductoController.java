@@ -3,6 +3,7 @@ package com.climatizacion.sistema_clima.controller;
 import com.climatizacion.sistema_clima.dto.HistorialPrecioDTO;
 import com.climatizacion.sistema_clima.dto.ProductoRequestDTO;
 import com.climatizacion.sistema_clima.dto.ProductoResponseDTO;
+import com.climatizacion.sistema_clima.entities.ProductoEntity;
 import com.climatizacion.sistema_clima.service.HistorialPrecioService;
 import com.climatizacion.sistema_clima.service.ProductoService;
 import jakarta.validation.Valid;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -101,5 +103,16 @@ public class ProductoController {
     public ResponseEntity<Long> obtenerStock(@PathVariable Long id) {
         ProductoResponseDTO producto = productoService.obtenerPorId(id);
         return ResponseEntity.ok(producto.getStock());
+    }
+
+    @GetMapping("/paginado")
+    public ResponseEntity<Page<ProductoResponseDTO>> listarProductosPaginados(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "") String categoria) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("idProducto").descending());
+        return ResponseEntity.ok(productoService.obtenerProductosPaginados(search, categoria, pageable));
     }
 }

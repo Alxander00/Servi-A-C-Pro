@@ -1,6 +1,7 @@
 package com.climatizacion.sistema_clima.controller;
 
 import com.climatizacion.sistema_clima.dto.PedidoRequestDTO;
+import com.climatizacion.sistema_clima.dto.PedidoResponseDTO;
 import com.climatizacion.sistema_clima.entities.PedidoEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
@@ -12,6 +13,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -295,5 +297,16 @@ public class PedidoController {
             @RequestParam(defaultValue = "6") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(service.listarPorUsuarioPaginado(idUsuario, pageable));
+    }
+
+    @GetMapping("/paginado")
+    public ResponseEntity<Page<PedidoResponseDTO>> listarPedidosPaginados(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "") String estado) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fechaPedido").descending());
+        return ResponseEntity.ok(service.obtenerPedidosPaginados(search, estado, pageable));
     }
 }

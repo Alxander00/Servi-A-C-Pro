@@ -2,6 +2,7 @@ package com.climatizacion.sistema_clima.service.impl;
 
 import com.climatizacion.sistema_clima.dto.DetallePedidoRequestDTO;
 import com.climatizacion.sistema_clima.dto.PedidoRequestDTO;
+import com.climatizacion.sistema_clima.dto.PedidoResponseDTO;
 import com.climatizacion.sistema_clima.entities.DetallePedidoEntity;
 import com.climatizacion.sistema_clima.entities.PedidoEntity;
 import com.climatizacion.sistema_clima.entities.ProductoEntity;
@@ -158,5 +159,11 @@ public class PedidoServiceImpl implements PedidoService {
     @Override
     public Page<PedidoEntity> listarPorUsuarioPaginado(Long idUsuario, Pageable pageable) {
         return repository.findByIdUsuario(idUsuario, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PedidoResponseDTO> obtenerPedidosPaginados(String search, String estado, Pageable pageable) {
+        return repository.buscarConFiltros(search, estado, pageable);
     }
 }
