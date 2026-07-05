@@ -23,6 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Servicio para la gestión de productos (equipos de aire acondicionado).
+ */
 @Service
 @RequiredArgsConstructor
 public class ProductoImpl implements ProductoService {
@@ -32,32 +35,22 @@ public class ProductoImpl implements ProductoService {
     private final HistorialPrecioService historialPrecioService;
     private final CloudinaryService cloudinaryService;
 
+    /**
+     * Crea un nuevo producto sin imágenes (solo datos básicos).
+     * @param dto Datos del producto
+     * @return DTO con los datos del producto creado
+     */
     @Override
     @Transactional
     public ProductoResponseDTO crear(ProductoRequestDTO dto) {
-        // ... (sin cambios, igual que antes)
-        CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
-                .orElseThrow(() -> new RuntimeException("Categoría no existe"));
-        ProductoEntity producto = ProductoEntity.builder()
-                .nombre(dto.getNombre())
-                .descripcion(dto.getDescripcion())
-                .precio(dto.getPrecio())
-                .capacidadBtu(dto.getCapacidadBTU())
-                .stock(dto.getStock())
-                .categoria(categoria)
-                .activo(true)
-                .build();
-        if (dto.getImagenesUrls() != null && !dto.getImagenesUrls().isEmpty()) {
-            List<ProductoImagen> imagenes = dto.getImagenesUrls().stream()
-                    .map(url -> ProductoImagen.builder().imagenUrl(url).producto(producto).esPrincipal(dto.getImagenesUrls().indexOf(url) == 0).build())
-                    .collect(Collectors.toList());
-            producto.getImagenes().addAll(imagenes);
-        }
-        ProductoEntity guardado = productoRepository.save(producto);
-        historialPrecioService.registrarCambioPrecio(guardado.getIdProducto(), guardado.getPrecio());
-        return mapearAResponseDTO(guardado);
+        return crearConImagenes(dto, null);
     }
 
+    /**
+     * Lista productos activos con paginación.
+     * @param pageable Configuración de paginación
+     * @return Página de productos
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<ProductoResponseDTO> listarActivos(Pageable pageable) {
@@ -65,27 +58,56 @@ public class ProductoImpl implements ProductoService {
                 .map(this::mapearAResponseDTO);
     }
 
+    /**
+     * Obtiene un producto por su ID.
+     * @param idProducto ID del producto
+     * @return DTO del producto
+     * @throws RuntimeException si el producto no existe
+     */
     @Override
     @Transactional(readOnly = true)
-    public ProductoResponseDTO obtenerPorId(Long id) {
-        ProductoEntity producto = productoRepository.findById(id).orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+    public ProductoResponseDTO obtenerPorId(Long idProducto) {
+        ProductoEntity producto = productoRepository.findById(idProducto)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         return mapearAResponseDTO(producto);
     }
 
+    /**
+     * Actualiza un producto sin imágenes (solo datos básicos).
+     */
     @Override
     @Transactional
     public ProductoResponseDTO actualizar(Long id, ProductoRequestDTO dto) {
-        // Delegamos al nuevo método sin imágenes
         return actualizarConImagenes(id, dto, null);
     }
 
+    /**
+     * Actualiza un producto permitiendo añadir o reemplazar imágenes.
+     * @param id ID del producto
+     * @param dto Datos del producto
+     * @param nuevasImagenes Nuevas imágenes a añadir
+     * @return DTO con los datos actualizados
+     */
     @Override
     @Transactional
     public ProductoResponseDTO actualizarConImagenes(Long id, ProductoRequestDTO dto, List<MultipartFile> nuevasImagenes) {
+        // Validar existencia
         ProductoEntity producto = productoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+
+        // ✅ Validar categoría
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
                 .orElseThrow(() -> new RuntimeException("Categoría no existe"));
+
+        // ✅ Validar precio
+        if (dto.getPrecio() == null || dto.getPrecio().compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("El precio no puede ser negativo");
+        }
+
+        // ✅ Validar stock
+        if (dto.getStock() == null || dto.getStock() < 0) {
+            throw new RuntimeException("El stock no puede ser negativo");
+        }
 
         BigDecimal precioAnterior = producto.getPrecio();
 
@@ -96,8 +118,7 @@ public class ProductoImpl implements ProductoService {
         producto.setStock(dto.getStock());
         producto.setCategoria(categoria);
 
-        // ===== MANEJO DE IMÁGENES =====
-        // 1. Si se envió la lista de URLs (las que deben quedar), reemplazar la lista actual
+        // Manejo de imágenes
         if (dto.getImagenesUrls() != null) {
             producto.getImagenes().clear();
             for (String url : dto.getImagenesUrls()) {
@@ -110,7 +131,6 @@ public class ProductoImpl implements ProductoService {
             }
         }
 
-        // 2. Si hay nuevas imágenes, AGREGARLAS (no reemplazar)
         if (nuevasImagenes != null && !nuevasImagenes.isEmpty()) {
             for (MultipartFile img : nuevasImagenes) {
                 try {
@@ -129,7 +149,6 @@ public class ProductoImpl implements ProductoService {
 
         ProductoEntity actualizado = productoRepository.save(producto);
 
-        // Registrar cambio de precio si es diferente
         if (precioAnterior.compareTo(dto.getPrecio()) != 0) {
             historialPrecioService.registrarCambioPrecio(id, dto.getPrecio());
         }
@@ -137,21 +156,42 @@ public class ProductoImpl implements ProductoService {
         return mapearAResponseDTO(actualizado);
     }
 
+    /**
+     * Elimina un producto (soft delete - lo marca como inactivo).
+     * @param idProducto ID del producto
+     */
     @Override
     @Transactional
-    public void eliminar(Long id) {
-        ProductoEntity producto = productoRepository.findById(id)
+    public void eliminar(Long idProducto) {
+        ProductoEntity producto = productoRepository.findById(idProducto)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         producto.setActivo(false);
         productoRepository.save(producto);
     }
 
+    /**
+     * Crea un producto con imágenes.
+     * @param dto Datos del producto
+     * @param imagenes Lista de archivos de imagen
+     * @return DTO con los datos del producto creado
+     */
     @Override
     @Transactional
     public ProductoResponseDTO crearConImagenes(ProductoRequestDTO dto, List<MultipartFile> imagenes) {
-        // Igual que ya tienes, sin cambios
+        // ✅ Validar categoría
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
                 .orElseThrow(() -> new RuntimeException("Categoría no existe"));
+
+        // ✅ Validar precio
+        if (dto.getPrecio() == null || dto.getPrecio().compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("El precio no puede ser negativo");
+        }
+
+        // ✅ Validar stock
+        if (dto.getStock() == null || dto.getStock() < 0) {
+            throw new RuntimeException("El stock no puede ser negativo");
+        }
+
         ProductoEntity producto = ProductoEntity.builder()
                 .nombre(dto.getNombre())
                 .descripcion(dto.getDescripcion())
@@ -161,15 +201,18 @@ public class ProductoImpl implements ProductoService {
                 .categoria(categoria)
                 .activo(true)
                 .build();
+
         ProductoEntity productoGuardado = productoRepository.save(producto);
+
         if (imagenes != null && !imagenes.isEmpty()) {
-            for (MultipartFile img : imagenes) {
+            for (int i = 0; i < imagenes.size(); i++) {
+                MultipartFile img = imagenes.get(i);
                 try {
                     String urlPublica = cloudinaryService.subirImagen(img);
                     ProductoImagen imagenEntity = ProductoImagen.builder()
                             .imagenUrl(urlPublica)
                             .producto(productoGuardado)
-                            .esPrincipal(imagenes.indexOf(img) == 0)
+                            .esPrincipal(i == 0)
                             .build();
                     productoGuardado.getImagenes().add(imagenEntity);
                 } catch (IOException e) {
@@ -178,11 +221,17 @@ public class ProductoImpl implements ProductoService {
             }
             productoGuardado = productoRepository.save(productoGuardado);
         }
+
         historialPrecioService.registrarCambioPrecio(productoGuardado.getIdProducto(), productoGuardado.getPrecio());
         return mapearAResponseDTO(productoGuardado);
     }
 
+    /**
+     * Lista productos activos ordenados por popularidad (más vendidos).
+     * @return Lista de productos ordenados por ventas
+     */
     @Override
+    @Transactional(readOnly = true)
     public List<ProductoResponseDTO> listarActivosOrdenadosPorPopularidad() {
         List<Object[]> resultados = productoRepository.findProductosConVentas();
         return resultados.stream().map(row -> {
@@ -193,6 +242,35 @@ public class ProductoImpl implements ProductoService {
             return dto;
         }).collect(Collectors.toList());
     }
+
+    /**
+     * Obtiene el stock disponible de un producto.
+     * @param idProducto ID del producto
+     * @return Cantidad en stock
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Long obtenerStock(Long idProducto) {
+        ProductoEntity producto = productoRepository.findById(idProducto)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+        return producto.getStock();
+    }
+
+    /**
+     * Lista productos con filtros de búsqueda y categoría, paginados.
+     * @param search Texto de búsqueda (nombre del producto)
+     * @param categoria ID de la categoría (opcional)
+     * @param pageable Configuración de paginación
+     * @return Página de productos filtrados
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductoResponseDTO> obtenerProductosPaginados(String search, String categoria, Pageable pageable) {
+        return productoRepository.buscarActivosConFiltros(search, categoria, pageable)
+                .map(this::mapearAResponseDTO);
+    }
+
+    // ===== MÉTODOS PRIVADOS =====
 
     private ProductoResponseDTO mapearAResponseDTO(ProductoEntity entity) {
         List<String> urls = entity.getImagenes() != null
@@ -210,21 +288,5 @@ public class ProductoImpl implements ProductoService {
                 .nombreCategoria(entity.getCategoria().getNombre())
                 .imagenesUrls(urls)
                 .build();
-    }
-
-    // ProductoImpl.java
-    @Override
-    @Transactional(readOnly = true)
-    public Long obtenerStock(Long idProducto) {
-        ProductoEntity producto = productoRepository.findById(idProducto)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-        return producto.getStock();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<ProductoResponseDTO> obtenerProductosPaginados(String search, String categoria, Pageable pageable) {
-        return productoRepository.buscarActivosConFiltros(search, categoria, pageable)
-                .map(this::mapearAResponseDTO);
     }
 }

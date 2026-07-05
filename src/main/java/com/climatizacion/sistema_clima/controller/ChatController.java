@@ -5,11 +5,14 @@ import com.climatizacion.sistema_clima.entities.CitaEntity;
 import com.climatizacion.sistema_clima.entities.ConversacionEntity;
 import com.climatizacion.sistema_clima.entities.MensajeEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
+import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.repository.CitaRepository;
 import com.climatizacion.sistema_clima.repository.ConversacionRepository;
 import com.climatizacion.sistema_clima.repository.MensajeRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -28,23 +31,26 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChatController {
 
+    private static final Logger log = LoggerFactory.getLogger(ChatController.class);
+
     private final SimpMessagingTemplate messagingTemplate;
     private final MensajeRepository mensajeRepository;
     private final ConversacionRepository conversacionRepository;
     private final UsuarioRepository usuarioRepository;
-
     private final CitaRepository citaRepository;
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload Map<String, Object> payload, Principal principal) {
         if (principal == null) {
-            System.err.println("❌ Principal es null, no se puede enviar mensaje");
+            log.error("❌ Principal es null, no se puede enviar mensaje");
             return;
         }
 
         Long conversacionId = Long.valueOf(payload.get("conversacionId").toString());
         String contenido = (String) payload.get("contenido");
         Long idRemitente = Long.valueOf(principal.getName());
+
+        log.info("📩 Mensaje de usuario {} en conversación {}", idRemitente, conversacionId);
 
         UsuarioEntity remitente = usuarioRepository.findById(idRemitente)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -92,30 +98,44 @@ public class ChatController {
                 mensajeDTO
         );
 
-        // 👇 3. LÓGICA MÁGICA: Buscar la cita y enviar la notificación con el ID 👇
-        Long idCliente = conversacion.getIdCliente();
-        Long idTecnico = conversacion.getIdTecnico();
+        log.debug("✅ Mensaje enviado a usuario {}", idDestinatario);
+
+        // 3. Lógica optimizada para notificaciones
         Long idCitaNotificacion = null;
 
-        // Buscamos qué cita comparten este cliente y este técnico
-        List<CitaEntity> citasVinculadas = citaRepository.findByCliente_IdUsuario(idCliente);
-        for (CitaEntity c : citasVinculadas) {
-            if (c.getTecnico() != null && c.getTecnico().getIdUsuario().equals(idTecnico)) {
-                idCitaNotificacion = c.getIdCita();
-                // Si la cita está activa, le damos prioridad
-                if ("PROGRAMADA".equals(c.getEstado()) || "EN_PROCESO".equals(c.getEstado())) {
-                    break;
-                }
+        // 🔥 PRIMERO: Usar el idCita de la conversación si existe
+        if (conversacion.getIdCita() != null) {
+            idCitaNotificacion = conversacion.getIdCita();
+            log.debug("📌 Usando idCita de la conversación: {}", idCitaNotificacion);
+        } else {
+            // 🔄 FALLBACK: Buscar cita activa (PROGRAMADA o EN_PROCESO) entre cliente y técnico
+            log.debug("🔍 Buscando cita activa entre cliente {} y técnico {}",
+                    conversacion.getIdCliente(), conversacion.getIdTecnico());
+
+            List<CitaEntity> citasActivas = citaRepository.findByCliente_IdUsuarioAndTecnico_IdUsuarioAndEstadoIn(
+                    conversacion.getIdCliente(),
+                    conversacion.getIdTecnico(),
+                    List.of(EstadoCita.PROGRAMADA, EstadoCita.EN_PROCESO)
+            );
+
+            if (!citasActivas.isEmpty()) {
+                idCitaNotificacion = citasActivas.get(0).getIdCita();
+                log.debug("✅ Cita activa encontrada: {}", idCitaNotificacion);
+            } else {
+                log.warn("⚠️ No se encontró cita activa entre cliente {} y técnico {}",
+                        conversacion.getIdCliente(), conversacion.getIdTecnico());
             }
         }
 
-        // Usamos Map<String, Object> para poder enviar el ID como número
+        // 4. Enviar notificación con el ID de la cita (si existe)
         Map<String, Object> notificacion = new HashMap<>();
         notificacion.put("mensaje", "Nuevo mensaje de " + remitente.getNombres());
 
-        // Si encontramos la cita, adjuntamos su ID al paquete
         if (idCitaNotificacion != null) {
             notificacion.put("idCita", idCitaNotificacion);
+            log.debug("📨 Notificación con idCita: {}", idCitaNotificacion);
+        } else {
+            log.debug("📨 Notificación sin idCita (no hay cita asociada)");
         }
 
         messagingTemplate.convertAndSendToUser(
@@ -131,20 +151,27 @@ public class ChatController {
         UsuarioEntity usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        log.debug("📂 Obteniendo mensajes de conversación {} para usuario {}", id, usuario.getIdUsuario());
+
         ConversacionEntity conversacion = conversacionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Conversación no encontrada"));
 
         if (!conversacion.getIdCliente().equals(usuario.getIdUsuario()) &&
                 !conversacion.getIdTecnico().equals(usuario.getIdUsuario())) {
+            log.warn("⚠️ Usuario {} intentó acceder a conversación {} sin permiso",
+                    usuario.getIdUsuario(), id);
             throw new RuntimeException("No tienes acceso a esta conversación");
         }
 
         List<MensajeEntity> mensajes = mensajeRepository.findByConversacionIdOrderByFechaEnvioAsc(id);
 
+        // Marcar mensajes como leídos
         mensajes.stream()
                 .filter(m -> !m.getLeido() && !m.getIdRemitente().equals(usuario.getIdUsuario()))
                 .forEach(m -> m.setLeido(true));
         mensajeRepository.saveAll(mensajes);
+
+        log.debug("✅ {} mensajes obtenidos de conversación {}", mensajes.size(), id);
 
         return mensajes.stream().map(m -> MensajeDTO.builder()
                 .id(m.getId())
@@ -164,43 +191,49 @@ public class ChatController {
         String email = authentication.getName();
         UsuarioEntity usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        log.debug("📋 Listando conversaciones para usuario {}", usuario.getIdUsuario());
         return conversacionRepository.findConversacionesByUsuario(usuario.getIdUsuario());
     }
 
     @PostMapping("/api/conversaciones/iniciar")
     public ResponseEntity<ConversacionEntity> iniciarConversacion(@RequestBody Map<String, Long> payload, Authentication authentication) {
-        // 1. Obtener usuario autenticado
         String email = authentication.getName();
         UsuarioEntity usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no autenticado"));
 
-        // 2. Extraer datos del payload
         Long idCliente = payload.get("idCliente");
         Long idTecnico = payload.get("idTecnico");
         Long idCita = payload.get("idCita");
 
-        // 3. Validar que lleguen todos los campos obligatorios
         if (idCliente == null || idTecnico == null || idCita == null) {
+            log.warn("⚠️ Faltan datos para iniciar conversación: idCliente={}, idTecnico={}, idCita={}",
+                    idCliente, idTecnico, idCita);
             throw new RuntimeException("Faltan datos: idCliente, idTecnico e idCita son obligatorios");
         }
 
-        // 4. Verificar que el usuario autenticado sea parte de la conversación
         if (!usuario.getIdUsuario().equals(idCliente) && !usuario.getIdUsuario().equals(idTecnico)) {
+            log.warn("⚠️ Usuario {} intentó crear conversación sin permiso", usuario.getIdUsuario());
             throw new RuntimeException("No tienes permiso para crear esta conversación");
         }
 
-        // 5. Buscar conversación existente para esta cita específica
+        log.info("📝 Iniciando conversación: cliente={}, técnico={}, cita={}", idCliente, idTecnico, idCita);
+
         return conversacionRepository.findByIdClienteAndIdTecnicoAndIdCita(idCliente, idTecnico, idCita)
-                .map(ResponseEntity::ok)
+                .map(conversacion -> {
+                    log.debug("✅ Conversación existente encontrada: {}", conversacion.getId());
+                    return ResponseEntity.ok(conversacion);
+                })
                 .orElseGet(() -> {
-                    // 6. Crear nueva conversación con idCita
                     ConversacionEntity conversacion = ConversacionEntity.builder()
                             .idCliente(idCliente)
                             .idTecnico(idTecnico)
                             .idCita(idCita)
                             .fechaCreacion(LocalDateTime.now())
                             .build();
-                    return ResponseEntity.ok(conversacionRepository.save(conversacion));
+                    ConversacionEntity guardada = conversacionRepository.save(conversacion);
+                    log.info("✅ Nueva conversación creada: {}", guardada.getId());
+                    return ResponseEntity.ok(guardada);
                 });
     }
 }

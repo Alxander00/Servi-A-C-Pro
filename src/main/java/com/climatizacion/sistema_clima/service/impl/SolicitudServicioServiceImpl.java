@@ -4,6 +4,7 @@ import com.climatizacion.sistema_clima.dto.SolicitudRequestDTO;
 import com.climatizacion.sistema_clima.dto.SolicitudResponseDTO;
 import com.climatizacion.sistema_clima.entities.*;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
+import com.climatizacion.sistema_clima.enums.Rol;
 import com.climatizacion.sistema_clima.repository.*;
 import com.climatizacion.sistema_clima.service.NotificacionService;
 import com.climatizacion.sistema_clima.service.ResendEmailService;
@@ -20,6 +21,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Servicio para la gestión de solicitudes de servicio técnico.
+ */
 @Service
 @RequiredArgsConstructor
 public class SolicitudServicioServiceImpl implements SolicitudServicioService {
@@ -33,6 +37,12 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     @Value("${admin.email:admin@climapro.com}")
     private String adminEmail;
 
+    /**
+     * Crea una nueva solicitud de servicio para un cliente.
+     * @param request Datos de la solicitud
+     * @return DTO con los datos de la solicitud creada
+     * @throws RuntimeException si el cliente no existe
+     */
     @Override
     @Transactional
     public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request) {
@@ -49,6 +59,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                 .build();
         SolicitudServicioEntity saved = solicitudRepository.save(solicitud);
 
+        // Notificar al administrador por correo
         try {
             String asunto = "Nueva solicitud de servicio de " + cliente.getNombres() + " " + cliente.getApellidos();
             String cuerpo = "<h2>Nueva solicitud de servicio</h2>" +
@@ -65,7 +76,10 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
         return mapToResponseDTO(saved);
     }
 
-    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
+    /**
+     * Lista todas las solicitudes pendientes (solo ADMIN).
+     * @return Lista de solicitudes pendientes
+     */
     @Override
     @Transactional(readOnly = true)
     public List<SolicitudResponseDTO> listarSolicitudesPendientes() {
@@ -73,7 +87,11 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                 .stream().map(this::mapToResponseDTO).collect(Collectors.toList());
     }
 
-    // ✅ CORREGIDO: Ahora usa el método con JOIN FETCH
+    /**
+     * Lista todas las solicitudes de un cliente específico.
+     * @param idCliente ID del cliente
+     * @return Lista de solicitudes del cliente
+     */
     @Override
     @Transactional(readOnly = true)
     public List<SolicitudResponseDTO> listarPorCliente(Long idCliente) {
@@ -81,9 +99,18 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                 .stream().map(this::mapToResponseDTO).collect(Collectors.toList());
     }
 
+    /**
+     * Asigna un técnico a una solicitud, creando una cita automáticamente.
+     * @param idSolicitud ID de la solicitud
+     * @param idTecnico ID del técnico a asignar
+     * @param fechaInicio Fecha de inicio de la cita
+     * @param fechaFin Fecha de fin de la cita
+     * @throws RuntimeException si la solicitud no existe, el técnico no es válido, o las fechas son incorrectas
+     */
     @Override
     @Transactional
     public void asignarTecnico(Long idSolicitud, Long idTecnico, LocalDateTime fechaInicio, LocalDateTime fechaFin) {
+        // Validar que la solicitud exista y esté pendiente
         SolicitudServicioEntity solicitud = solicitudRepository.findById(idSolicitud)
                 .orElseThrow(() -> new RuntimeException("Solicitud no encontrada"));
 
@@ -91,8 +118,26 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
             throw new RuntimeException("La solicitud ya fue procesada");
         }
 
+        // ✅ Validar que el técnico exista y sea TÉCNICO
         UsuarioEntity tecnico = usuarioRepository.findById(idTecnico)
                 .orElseThrow(() -> new RuntimeException("Técnico no encontrado"));
+
+        if (tecnico.getRol() != Rol.TECNICO) {
+            throw new RuntimeException("El usuario seleccionado no es un técnico válido");
+        }
+
+        if (!tecnico.isActivo()) {
+            throw new RuntimeException("El técnico no está activo en el sistema");
+        }
+
+        // ✅ Validar que las fechas sean correctas
+        if (fechaInicio.isAfter(fechaFin)) {
+            throw new RuntimeException("La fecha de inicio debe ser anterior a la fecha de fin");
+        }
+
+        if (fechaInicio.isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("No se puede programar una cita en el pasado");
+        }
 
         // Crear y guardar la cita
         CitaEntity cita = CitaEntity.builder()
@@ -121,13 +166,13 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                     tecnico,
                     mensajeNotificacion,
                     "CITA_ASIGNADA",
-                    "tecnico.html?cita=" + cita.getIdCita() // 👈 AQUÍ ESTÁ EL CAMBIO MÁGICO
+                    "tecnico.html?cita=" + cita.getIdCita()
             );
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo crear la notificación para el técnico ID " + idTecnico + " - " + e.getMessage());
         }
 
-        // ===== ENVIAR CORREO ELECTRÓNICO =====
+        // ===== ENVIAR CORREO ELECTRÓNICO AL TÉCNICO =====
         try {
             String fechaFormateada = fechaInicio.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
             resendEmailService.enviarCorreoNuevaCita(
@@ -142,6 +187,11 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
         }
     }
 
+    /**
+     * Rechaza una solicitud de servicio.
+     * @param idSolicitud ID de la solicitud a rechazar
+     * @throws RuntimeException si la solicitud no existe
+     */
     @Override
     @Transactional
     public void rechazarSolicitud(Long idSolicitud) {
@@ -150,6 +200,42 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
         solicitud.setEstado("RECHAZADA");
         solicitudRepository.save(solicitud);
     }
+
+    /**
+     * Cuenta el número total de solicitudes pendientes.
+     * @return Cantidad de solicitudes en estado PENDIENTE
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public long contarPendientes() {
+        return solicitudRepository.countByEstado("PENDIENTE");
+    }
+
+    /**
+     * Cuenta el número de solicitudes pendientes de un cliente específico.
+     * @param idCliente ID del cliente
+     * @return Cantidad de solicitudes pendientes del cliente
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public long contarPendientesPorCliente(Long idCliente) {
+        return solicitudRepository.countByCliente_IdUsuarioAndEstado(idCliente, "PENDIENTE");
+    }
+
+    /**
+     * Lista las solicitudes de un cliente con paginación.
+     * @param idCliente ID del cliente
+     * @param pageable Configuración de paginación
+     * @return Página de solicitudes del cliente
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SolicitudResponseDTO> listarPorClientePaginado(Long idCliente, Pageable pageable) {
+        return solicitudRepository.findByCliente_IdUsuario(idCliente, pageable)
+                .map(this::mapToResponseDTO);
+    }
+
+    // ===== MÉTODOS PRIVADOS =====
 
     private SolicitudResponseDTO mapToResponseDTO(SolicitudServicioEntity entity) {
         return SolicitudResponseDTO.builder()
@@ -162,21 +248,5 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
                 .estado(entity.getEstado())
                 .fechaCreacion(entity.getFechaCreacion())
                 .build();
-    }
-
-    @Override
-    public long contarPendientes() {
-        return solicitudRepository.countByEstado("PENDIENTE");
-    }
-
-    @Override
-    public long contarPendientesPorCliente(Long idCliente) {
-        return solicitudRepository.countByCliente_IdUsuarioAndEstado(idCliente, "PENDIENTE");
-    }
-
-    @Override
-    public Page<SolicitudResponseDTO> listarPorClientePaginado(Long idCliente, Pageable pageable) {
-        return solicitudRepository.findByCliente_IdUsuario(idCliente, pageable)
-                .map(this::mapToResponseDTO);
     }
 }

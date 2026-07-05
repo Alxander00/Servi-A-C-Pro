@@ -3,7 +3,6 @@ package com.climatizacion.sistema_clima.controller;
 import com.climatizacion.sistema_clima.dto.HistorialPrecioDTO;
 import com.climatizacion.sistema_clima.dto.ProductoRequestDTO;
 import com.climatizacion.sistema_clima.dto.ProductoResponseDTO;
-import com.climatizacion.sistema_clima.entities.ProductoEntity;
 import com.climatizacion.sistema_clima.service.HistorialPrecioService;
 import com.climatizacion.sistema_clima.service.ProductoService;
 import jakarta.validation.Valid;
@@ -15,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +33,7 @@ public class ProductoController {
     private final HistorialPrecioService historialPrecioService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ProductoResponseDTO> crear(
             @RequestPart("producto") @Valid ProductoRequestDTO dto,
             @RequestPart(value = "imagenes", required = false) List<MultipartFile> imagenes) {
@@ -40,8 +41,8 @@ public class ProductoController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    // NUEVO: PUT que acepta multipart para actualizar con imágenes
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ProductoResponseDTO> actualizarConImagenes(
             @PathVariable Long id,
             @RequestPart("producto") @Valid ProductoRequestDTO dto,
@@ -52,8 +53,8 @@ public class ProductoController {
         return ResponseEntity.ok(response);
     }
 
-    // Mantenemos el PUT original (solo JSON) por si se necesita, pero el frontend usará el de arriba
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ProductoResponseDTO> actualizarJson(@PathVariable Long id, @Valid @RequestBody ProductoRequestDTO dto) {
         return ResponseEntity.ok(productoService.actualizar(id, dto));
     }
@@ -62,7 +63,6 @@ public class ProductoController {
     public ResponseEntity<Page<ProductoResponseDTO>> listarActivos(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(productoService.listarActivos(pageable));
     }
@@ -73,6 +73,7 @@ public class ProductoController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         productoService.eliminar(id);
         return ResponseEntity.noContent().build();
@@ -111,7 +112,6 @@ public class ProductoController {
             @RequestParam(defaultValue = "8") int size,
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "") String categoria) {
-
         Pageable pageable = PageRequest.of(page, size, Sort.by("idProducto").descending());
         return ResponseEntity.ok(productoService.obtenerProductosPaginados(search, categoria, pageable));
     }

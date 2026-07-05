@@ -4,6 +4,7 @@ import com.climatizacion.sistema_clima.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -20,6 +21,7 @@ import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -32,18 +34,25 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Públicos
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/").permitAll()
-                        .requestMatchers("/categorias").permitAll()
-                        .requestMatchers("/productos/**").permitAll()
-                        .requestMatchers("/api/equipos/**").permitAll()
-                        .requestMatchers("/api/solicitudes/**").authenticated()
+                        .requestMatchers("/categorias").permitAll()          // GET público
+                        .requestMatchers("/productos/**").permitAll()       // GET público
+                        .requestMatchers("/api/equipos/**").permitAll()     // GET público
                         .requestMatchers("/api/equipos-cliente/**").permitAll()
-                        .requestMatchers("/api/citas/**").authenticated()
-                        .requestMatchers("/api/repuestos/**").hasAnyAuthority("ADMIN", "TECNICO")
                         .requestMatchers("/ws-chat/**").permitAll()
 
-                        .requestMatchers("/usuarios").permitAll()
+                        // Solo ADMIN puede acceder a usuarios
+                        .requestMatchers("/usuarios/**").hasAuthority("ADMIN")
+
+                        // Solo ADMIN o TECNICO para repuestos
+                        .requestMatchers("/api/repuestos/**").hasAnyAuthority("ADMIN", "TECNICO")
+
+                        // Rutas protegidas por defecto (el resto requiere autenticación)
+                        .requestMatchers("/api/solicitudes/**").authenticated()
+                        .requestMatchers("/api/citas/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

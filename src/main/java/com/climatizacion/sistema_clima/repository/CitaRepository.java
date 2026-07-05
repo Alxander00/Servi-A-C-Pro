@@ -25,6 +25,12 @@ public interface CitaRepository extends JpaRepository<CitaEntity, Long> {
 
     long countByCliente_IdUsuarioAndEstadoIn(Long idCliente, List<EstadoCita> estados);
 
+    List<CitaEntity> findByCliente_IdUsuarioAndTecnico_IdUsuarioAndEstadoIn(
+            Long idCliente,
+            Long idTecnico,
+            List<EstadoCita> estados
+    );
+
     @Query("SELECT c FROM CitaEntity c JOIN FETCH c.cliente JOIN FETCH c.tecnico WHERE c.tecnico.idUsuario = :idTecnico")
     List<CitaEntity> findByTecnico_IdUsuarioWithFetch(@Param("idTecnico") Long idTecnico);
 

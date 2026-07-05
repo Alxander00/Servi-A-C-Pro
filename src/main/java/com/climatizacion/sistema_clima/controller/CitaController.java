@@ -4,7 +4,6 @@ import com.climatizacion.sistema_clima.dto.CitaRequestDTO;
 import com.climatizacion.sistema_clima.dto.CitaResponseDTO;
 import com.climatizacion.sistema_clima.dto.RepuestoUsadoDTO;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
-import com.climatizacion.sistema_clima.security.CustomUserDetails;
 import com.climatizacion.sistema_clima.service.CitaService;
 import com.climatizacion.sistema_clima.service.RepuestoService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,7 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,12 +30,13 @@ public class CitaController {
     private final RepuestoService repuestoService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<List<CitaResponseDTO>> listarTodas() {
         return ResponseEntity.ok(citaService.obtenerTodas());
     }
 
-    // Ahora acepta page y size
     @GetMapping("/tecnico/{idTecnico}")
+    @PreAuthorize("hasAuthority('ADMIN') or #idTecnico == authentication.principal.idUsuario")
     public ResponseEntity<Page<CitaResponseDTO>> listarPorTecnico(
             @PathVariable Long idTecnico,
             @RequestParam(defaultValue = "0") int page,
@@ -46,43 +46,38 @@ public class CitaController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<CitaResponseDTO> crear(@Valid @RequestBody CitaRequestDTO request) {
         return new ResponseEntity<>(citaService.crear(request), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN') or @citaServiceImpl.obtenerPorId(#id).tecnico.idUsuario == authentication.principal.idUsuario")
     public ResponseEntity<CitaResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody CitaRequestDTO request) {
         return ResponseEntity.ok(citaService.actualizar(id, request));
     }
 
     @PatchMapping("/{id}/estado")
+    @PreAuthorize("hasAuthority('ADMIN') or @citaServiceImpl.obtenerPorId(#id).tecnico.idUsuario == authentication.principal.idUsuario")
     public ResponseEntity<Void> cambiarEstado(@PathVariable Long id, @RequestParam String estado) {
         citaService.cambiarEstado(id, estado);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/cliente/{idCliente}")
-    public ResponseEntity<List<CitaResponseDTO>> listarPorCliente(
-            @PathVariable Long idCliente,
-            Authentication authentication) {
-
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        Long idUsuarioAutenticado = userDetails.getIdUsuario();
-        String rol = userDetails.getAuthorities().iterator().next().getAuthority();
-
-        if (rol.equals("CLIENTE") && !idUsuarioAutenticado.equals(idCliente)) {
-            throw new RuntimeException("No tienes permiso para ver las citas de otro usuario");
-        }
-
+    @PreAuthorize("hasAuthority('ADMIN') or #idCliente == authentication.principal.idUsuario")
+    public ResponseEntity<List<CitaResponseDTO>> listarPorCliente(@PathVariable Long idCliente) {
         return ResponseEntity.ok(citaService.obtenerPorCliente(idCliente));
     }
 
     @GetMapping("/conteos/pendientes/cliente/{idCliente}")
+    @PreAuthorize("hasAuthority('ADMIN') or #idCliente == authentication.principal.idUsuario")
     public ResponseEntity<Long> contarCitasPendientesCliente(@PathVariable Long idCliente) {
         return ResponseEntity.ok(citaService.contarCitasPorClienteYEstados(idCliente, List.of(EstadoCita.PROGRAMADA, EstadoCita.EN_PROCESO)));
     }
 
     @PostMapping("/{id}/reporte")
+    @PreAuthorize("hasAuthority('ADMIN') or @citaServiceImpl.obtenerPorId(#id).tecnico.idUsuario == authentication.principal.idUsuario")
     public ResponseEntity<Void> guardarReporte(
             @PathVariable Long id,
             @RequestParam("estado") String estado,
@@ -108,19 +103,11 @@ public class CitaController {
     }
 
     @GetMapping("/cliente/{idCliente}/paginado")
+    @PreAuthorize("hasAuthority('ADMIN') or #idCliente == authentication.principal.idUsuario")
     public ResponseEntity<Page<CitaResponseDTO>> listarPorClientePaginado(
             @PathVariable Long idCliente,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "6") int size,
-            Authentication authentication) {
-
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        Long idUsuarioAutenticado = userDetails.getIdUsuario();
-        String rol = userDetails.getAuthorities().iterator().next().getAuthority();
-
-        if (rol.equals("CLIENTE") && !idUsuarioAutenticado.equals(idCliente)) {
-            throw new RuntimeException("No tienes permiso para ver las citas de otro usuario");
-        }
+            @RequestParam(defaultValue = "6") int size) {
 
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(citaService.obtenerPorClientePaginado(idCliente, pageable));

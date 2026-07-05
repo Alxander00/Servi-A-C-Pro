@@ -26,6 +26,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Servicio para la gestión de pedidos.
+ */
 @Service
 @RequiredArgsConstructor
 public class PedidoServiceImpl implements PedidoService {
@@ -36,9 +39,38 @@ public class PedidoServiceImpl implements PedidoService {
     private final UsuarioRepository usuarioRepository;
     private final ResendEmailService resendEmailService;
 
+    /**
+     * Crea un pedido completo con sus detalles.
+     * @param dto Datos del pedido (usuario, items, total, dirección)
+     * @return Entidad del pedido creado
+     * @throws RuntimeException si el usuario no existe, o algún producto no tiene stock
+     */
     @Override
     @Transactional
     public PedidoEntity crearPedidoCompleto(PedidoRequestDTO dto) {
+        // ✅ Validar que el usuario exista
+        UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(dto.getIdUsuario()))
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        if (!usuario.isActivo()) {
+            throw new RuntimeException("El usuario no está activo en el sistema");
+        }
+
+        // ✅ Validar que la dirección no esté vacía
+        if (dto.getDireccion() == null || dto.getDireccion().trim().isEmpty()) {
+            throw new RuntimeException("La dirección de instalación es obligatoria");
+        }
+
+        // ✅ Validar que el total no sea negativo
+        if (dto.getTotal() == null || dto.getTotal() < 0) {
+            throw new RuntimeException("El total del pedido no puede ser negativo");
+        }
+
+        // ✅ Validar que haya al menos un item
+        if (dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new RuntimeException("El pedido debe tener al menos un producto");
+        }
+
         PedidoEntity pedido = new PedidoEntity();
         pedido.setIdUsuario(dto.getIdUsuario());
         pedido.setTotal(dto.getTotal());
@@ -49,13 +81,22 @@ public class PedidoServiceImpl implements PedidoService {
 
         PedidoEntity pedidoGuardado = repository.save(pedido);
 
+        // Procesar cada item
         for (DetallePedidoRequestDTO item : dto.getItems()) {
+            // ✅ Validar que el producto exista
             ProductoEntity producto = productoRepository.findById(item.getIdProducto())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
+            // ✅ Validar que la cantidad sea positiva
+            if (item.getCantidad() == null || item.getCantidad() <= 0) {
+                throw new RuntimeException("La cantidad del producto " + producto.getNombre() + " debe ser mayor a cero");
+            }
+
+            // Descontar stock
             int rowsUpdated = productoRepository.descontarStock(item.getIdProducto(), item.getCantidad());
             if (rowsUpdated == 0) {
-                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
+                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre() +
+                        ". Disponible: " + producto.getStock());
             }
 
             DetallePedidoEntity detalle = new DetallePedidoEntity();
@@ -66,9 +107,8 @@ public class PedidoServiceImpl implements PedidoService {
             detallePedidoRepository.save(detalle);
         }
 
+        // Enviar correo de confirmación
         try {
-            UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedidoGuardado.getIdUsuario()))
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
             resendEmailService.enviarCorreoPedidoCreado(usuario.getEmail(), usuario.getNombres(), pedidoGuardado.getIdPedido());
         } catch (Exception e) {
             System.err.println("⚠️ No se pudo enviar correo de confirmación de pedido #" + pedidoGuardado.getIdPedido() + " - " + e.getMessage());
@@ -102,6 +142,11 @@ public class PedidoServiceImpl implements PedidoService {
         return repository.findByIdUsuario(idUsuario);
     }
 
+    /**
+     * Cambia el estado de un pedido y notifica al usuario por correo.
+     * @param id ID del pedido
+     * @param nuevoEstado Nuevo estado (Pendiente, En Proceso, Completado, Cancelado)
+     */
     @Override
     @Transactional
     public void cambiarEstado(Long id, String nuevoEstado) {
@@ -110,6 +155,7 @@ public class PedidoServiceImpl implements PedidoService {
         pedido.setEstado(nuevoEstado);
         repository.save(pedido);
 
+        // Notificar al usuario
         try {
             UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedido.getIdUsuario()))
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -148,7 +194,6 @@ public class PedidoServiceImpl implements PedidoService {
             if (idCliente != null) {
                 predicates.add(cb.equal(root.get("idUsuario"), idCliente));
             }
-            // El emailCliente se maneja en el controlador (convertir a idCliente)
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
