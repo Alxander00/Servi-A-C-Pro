@@ -3,11 +3,13 @@ package com.climatizacion.sistema_clima.controller;
 import com.climatizacion.sistema_clima.dto.UsuarioDTO;
 import com.climatizacion.sistema_clima.entities.RefreshTokenEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
+import com.climatizacion.sistema_clima.enums.Rol;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.security.JwtUtil;
 import com.climatizacion.sistema_clima.service.RefreshTokenService;
 import com.climatizacion.sistema_clima.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -112,5 +114,15 @@ public class AuthController {
     public ResponseEntity<?> generateHash(@RequestParam String password) {
         String hash = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password);
         return ResponseEntity.ok(Map.of("password", password, "hash", hash));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody UsuarioDTO usuarioDTO) {
+        // Si no viene rol, forzar CLIENTE
+        if (usuarioDTO.getRol() == null) {
+            usuarioDTO.setRol(Rol.CLIENTE);
+        }
+        UsuarioDTO nuevo = usuarioService.registrarUsuario(usuarioDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
     }
 }
