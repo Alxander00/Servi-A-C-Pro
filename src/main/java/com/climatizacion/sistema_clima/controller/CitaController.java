@@ -77,7 +77,7 @@ public class CitaController {
     }
 
     @PostMapping("/{id}/reporte")
-    @PreAuthorize("hasAuthority('ADMIN') or @citaServiceImpl.obtenerPorId(#id).tecnico.idUsuario == authentication.principal.idUsuario")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'TECNICO')")
     public ResponseEntity<Void> guardarReporte(
             @PathVariable Long id,
             @RequestParam("estado") String estado,
