@@ -4,6 +4,7 @@ import com.climatizacion.sistema_clima.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -37,19 +38,25 @@ public class SecurityConfig {
                         // Públicos
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/").permitAll()
-                        .requestMatchers("/categorias").permitAll()          // GET público
-                        .requestMatchers("/productos/**").permitAll()       // GET público
-                        .requestMatchers("/api/equipos/**").permitAll()     // GET público
+                        .requestMatchers("/categorias").permitAll()
+                        .requestMatchers("/productos/**").permitAll()
+                        .requestMatchers("/api/equipos/**").permitAll()
                         .requestMatchers("/api/equipos-cliente/**").permitAll()
                         .requestMatchers("/ws-chat/**").permitAll()
 
-                        // Solo ADMIN puede acceder a usuarios
+                        //  Para actualizar avatar (cualquier autenticado)
+                        .requestMatchers("/usuarios/actualizar-avatar").authenticated()
+
+                        //  Para actualizar perfil (cualquier autenticado, validación en controlador)
+                        .requestMatchers(HttpMethod.PUT, "/usuarios/*").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/usuarios/*/estado").authenticated()
+
+                        // Solo ADMIN para el resto de operaciones sobre usuarios
                         .requestMatchers("/usuarios/**").hasAuthority("ADMIN")
 
                         // Solo ADMIN o TECNICO para repuestos
                         .requestMatchers("/api/repuestos/**").hasAnyAuthority("ADMIN", "TECNICO")
 
-                        // Rutas protegidas por defecto (el resto requiere autenticación)
                         .requestMatchers("/api/solicitudes/**").authenticated()
                         .requestMatchers("/api/citas/**").authenticated()
 

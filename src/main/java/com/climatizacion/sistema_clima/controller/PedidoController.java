@@ -1,5 +1,6 @@
 package com.climatizacion.sistema_clima.controller;
 
+import com.climatizacion.sistema_clima.dto.PedidoDetalleResponseDTO;
 import com.climatizacion.sistema_clima.dto.PedidoRequestDTO;
 import com.climatizacion.sistema_clima.dto.PedidoResponseDTO;
 import com.climatizacion.sistema_clima.entities.PedidoEntity;
@@ -52,8 +53,8 @@ public class PedidoController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or @pedidoServiceImpl.obtenerPorId(#id).idUsuario == authentication.principal.idUsuario")
-    public PedidoEntity obtener(@PathVariable Long id) {
-        return service.obtenerPorId(id);
+    public PedidoDetalleResponseDTO obtener(@PathVariable Long id) {
+        return service.obtenerPedidoConDetalles(id);
     }
 
     @DeleteMapping("/{id}")

@@ -3,6 +3,10 @@ package com.climatizacion.sistema_clima.entities;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "pedidos")
@@ -35,4 +39,7 @@ public class PedidoEntity {
 
     @Column(name = "direccion_instalacion", length = 255)
     private String direccion;
+
+    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<DetallePedidoEntity> detalles = new HashSet<>();
 }

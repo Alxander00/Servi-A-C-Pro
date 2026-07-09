@@ -1,12 +1,7 @@
 package com.climatizacion.sistema_clima.service.impl;
 
-import com.climatizacion.sistema_clima.dto.DetallePedidoRequestDTO;
-import com.climatizacion.sistema_clima.dto.PedidoRequestDTO;
-import com.climatizacion.sistema_clima.dto.PedidoResponseDTO;
-import com.climatizacion.sistema_clima.entities.DetallePedidoEntity;
-import com.climatizacion.sistema_clima.entities.PedidoEntity;
-import com.climatizacion.sistema_clima.entities.ProductoEntity;
-import com.climatizacion.sistema_clima.entities.UsuarioEntity;
+import com.climatizacion.sistema_clima.dto.*;
+import com.climatizacion.sistema_clima.entities.*;
 import com.climatizacion.sistema_clima.repository.DetallePedidoRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.ProductoRepository;
@@ -25,6 +20,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Servicio para la gestión de pedidos.
@@ -129,7 +126,8 @@ public class PedidoServiceImpl implements PedidoService {
 
     @Override
     public PedidoEntity obtenerPorId(Long id) {
-        return repository.findById(id).orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+        return repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
     }
 
     @Override
@@ -210,5 +208,59 @@ public class PedidoServiceImpl implements PedidoService {
     @Transactional(readOnly = true)
     public Page<PedidoResponseDTO> obtenerPedidosPaginados(String search, String estado, Pageable pageable) {
         return repository.buscarConFiltros(search, estado, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PedidoDetalleResponseDTO obtenerPedidoConDetalles(Long id) {
+        // 1. Obtener el pedido (sin detalles)
+        PedidoEntity pedido = obtenerPorId(id);
+
+        // 2. Obtener los detalles con productos e imágenes (usando el nuevo método)
+        List<DetallePedidoEntity> detalles = detallePedidoRepository.findByPedidoIdWithProductos(id);
+
+        // 3. Datos del cliente
+        String nombreCliente = "";
+        String fotoUrl = null;
+        Optional<UsuarioEntity> usuarioOpt = usuarioRepository.findById(pedido.getIdUsuario());
+        if (usuarioOpt.isPresent()) {
+            UsuarioEntity u = usuarioOpt.get();
+            nombreCliente = u.getNombres() + " " + (u.getApellidos() != null ? u.getApellidos() : "");
+            fotoUrl = u.getFotoUrl();
+        }
+
+        // 4. Mapear detalles a DTO
+        List<DetallePedidoResponseDTO> detallesDTO = detalles.stream()
+                .map(d -> {
+                    ProductoEntity producto = d.getProducto();
+                    List<String> imagenesUrls = producto.getImagenes().stream()
+                            .map(ProductoImagen::getImagenUrl)
+                            .collect(Collectors.toList());
+
+                    return DetallePedidoResponseDTO.builder()
+                            .idDetalle(d.getIdDetalle())
+                            .idProducto(producto.getIdProducto())
+                            .nombreProducto(producto.getNombre())
+                            .cantidad(d.getCantidad())
+                            .precioUnitario(d.getPrecioUnitario())
+                            .capacidadBtu(producto.getCapacidadBtu())
+                            .imagenesUrls(imagenesUrls)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        // 5. Construir respuesta
+        return PedidoDetalleResponseDTO.builder()
+                .idPedido(pedido.getIdPedido())
+                .idUsuario(pedido.getIdUsuario())
+                .nombreCliente(nombreCliente)
+                .fotoUrl(fotoUrl)
+                .fechaPedido(pedido.getFechaPedido())
+                .total(pedido.getTotal())
+                .incluyeInstalacion(pedido.getIncluyeInstalacion())
+                .estado(pedido.getEstado())
+                .direccion(pedido.getDireccion())
+                .detalles(detallesDTO)
+                .build();
     }
 }

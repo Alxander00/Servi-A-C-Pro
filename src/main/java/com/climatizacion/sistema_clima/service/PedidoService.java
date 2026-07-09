@@ -1,5 +1,6 @@
 package com.climatizacion.sistema_clima.service;
 
+import com.climatizacion.sistema_clima.dto.PedidoDetalleResponseDTO;
 import com.climatizacion.sistema_clima.dto.PedidoRequestDTO;
 import com.climatizacion.sistema_clima.dto.PedidoResponseDTO;
 import com.climatizacion.sistema_clima.entities.PedidoEntity;
@@ -25,6 +26,8 @@ public interface PedidoService {
     long contarPedidosPorEstadoYUsuario(Long idUsuario, List<String> estados);
 
     Page<PedidoResponseDTO> obtenerPedidosPaginados(String search, String estado, Pageable pageable);
+
+    PedidoDetalleResponseDTO obtenerPedidoConDetalles(Long id);
 
     List<PedidoEntity> listarConFiltros(LocalDateTime fechaInicio, LocalDateTime fechaFin,
                                         String estado, Long idCliente, String emailCliente);
