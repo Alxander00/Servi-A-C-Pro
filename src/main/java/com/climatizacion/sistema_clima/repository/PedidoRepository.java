@@ -29,6 +29,15 @@ public interface PedidoRepository extends JpaRepository<PedidoEntity, Long>, Jpa
             "u.fotoUrl, p.fechaPedido, p.total, p.incluyeInstalacion, p.estado, p.direccion) " +
             "FROM PedidoEntity p " +
             "LEFT JOIN UsuarioEntity u ON p.idUsuario = u.idUsuario " +
+            "WHERE p.idUsuario = :idUsuario")
+    Page<PedidoResponseDTO> findPedidosByUsuarioDto(@Param("idUsuario") Long idUsuario, Pageable pageable);
+
+    @Query("SELECT new com.climatizacion.sistema_clima.dto.PedidoResponseDTO(" +
+            "p.idPedido, p.idUsuario, " +
+            "CONCAT(u.nombres, ' ', u.apellidos), " +
+            "u.fotoUrl, p.fechaPedido, p.total, p.incluyeInstalacion, p.estado, p.direccion) " +
+            "FROM PedidoEntity p " +
+            "LEFT JOIN UsuarioEntity u ON p.idUsuario = u.idUsuario " +
             "WHERE (:search IS NULL OR :search = '' OR CAST(p.idPedido AS string) LIKE CONCAT('%', :search, '%')) " +
             "AND (:estado IS NULL OR :estado = '' OR p.estado = :estado)")
     Page<PedidoResponseDTO> buscarConFiltros(@Param("search") String search,

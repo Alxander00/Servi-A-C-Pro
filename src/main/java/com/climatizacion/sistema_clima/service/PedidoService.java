@@ -31,4 +31,6 @@ public interface PedidoService {
 
     List<PedidoEntity> listarConFiltros(LocalDateTime fechaInicio, LocalDateTime fechaFin,
                                         String estado, Long idCliente, String emailCliente);
+
+    Page<PedidoResponseDTO> listarPorUsuarioPaginadoDTO(Long idUsuario, Pageable pageable);
 }

@@ -263,4 +263,10 @@ public class PedidoServiceImpl implements PedidoService {
                 .detalles(detallesDTO)
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PedidoResponseDTO> listarPorUsuarioPaginadoDTO(Long idUsuario, Pageable pageable) {
+        return repository.findPedidosByUsuarioDto(idUsuario, pageable);
+    }
 }

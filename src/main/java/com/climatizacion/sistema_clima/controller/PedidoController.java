@@ -299,12 +299,12 @@ public class PedidoController {
 
     @GetMapping("/usuario/{idUsuario}/paginado")
     @PreAuthorize("hasAuthority('ADMIN') or #idUsuario == authentication.principal.idUsuario")
-    public ResponseEntity<Page<PedidoEntity>> listarPorUsuarioPaginado(
+    public ResponseEntity<Page<PedidoResponseDTO>> listarPorUsuarioPaginado(
             @PathVariable Long idUsuario,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(service.listarPorUsuarioPaginado(idUsuario, pageable));
+        return ResponseEntity.ok(service.listarPorUsuarioPaginadoDTO(idUsuario, pageable));
     }
 
     @GetMapping("/paginado")
