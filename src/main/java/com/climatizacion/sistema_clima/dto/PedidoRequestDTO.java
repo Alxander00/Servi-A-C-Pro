@@ -9,5 +9,6 @@ public class PedidoRequestDTO {
     private Double total;
     private Boolean incluyeInstalacion;
     private String direccion;
+    private String telefono;
     private List<DetallePedidoRequestDTO> items;
 }

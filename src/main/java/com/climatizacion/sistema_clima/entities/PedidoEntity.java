@@ -37,6 +37,9 @@ public class PedidoEntity {
     @Column(nullable = false, length = 30)
     private String estado = "Pendiente";
 
+    @Column(name = "telefono", length = 20)
+    private String telefono;
+
     @Column(name = "direccion_instalacion", length = 255)
     private String direccion;
 

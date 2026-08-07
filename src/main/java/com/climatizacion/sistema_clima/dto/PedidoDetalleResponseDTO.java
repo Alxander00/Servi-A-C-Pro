@@ -17,5 +17,6 @@ public class PedidoDetalleResponseDTO {
     private Boolean incluyeInstalacion;
     private String estado;
     private String direccion;
+    private String telefono;
     private List<DetallePedidoResponseDTO> detalles;
 }

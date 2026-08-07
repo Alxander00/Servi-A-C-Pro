@@ -75,6 +75,7 @@ public class PedidoServiceImpl implements PedidoService {
         pedido.setFechaPedido(LocalDateTime.now());
         pedido.setEstado("Pendiente");
         pedido.setDireccion(dto.getDireccion());
+        pedido.setTelefono(dto.getTelefono());
 
         PedidoEntity pedidoGuardado = repository.save(pedido);
 
@@ -260,6 +261,7 @@ public class PedidoServiceImpl implements PedidoService {
                 .incluyeInstalacion(pedido.getIncluyeInstalacion())
                 .estado(pedido.getEstado())
                 .direccion(pedido.getDireccion())
+                .telefono(pedido.getTelefono())
                 .detalles(detallesDTO)
                 .build();
     }
