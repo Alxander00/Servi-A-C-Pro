@@ -23,4 +23,7 @@ public interface ProductoService {
     List<ProductoResponseDTO> listarActivosOrdenadosPorPopularidad();
     Long obtenerStock(Long idProducto);
     Page<ProductoResponseDTO> obtenerProductosPaginados(String search, String categoria, Pageable pageable);
+    Page<ProductoResponseDTO> listarConFiltros(String busqueda, String categoria, String marca,
+                                               Double precioMin, Double precioMax,
+                                               Integer btuMin, Integer btuMax, Pageable pageable);
 }

@@ -62,9 +62,25 @@ public class ProductoController {
     @GetMapping
     public ResponseEntity<Page<ProductoResponseDTO>> listarActivos(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(productoService.listarActivos(pageable));
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String busqueda,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String marca,
+            @RequestParam(required = false) Double precioMin,
+            @RequestParam(required = false) Double precioMax,
+            @RequestParam(required = false) Integer btuMin,
+            @RequestParam(required = false) Integer btuMax,
+            @RequestParam(defaultValue = "idProducto") String orden,
+            @RequestParam(defaultValue = "ASC") String direccion) {
+
+        // Validación básica de dirección
+        Sort.Direction dir = Sort.Direction.fromOptionalString(direccion).orElse(Sort.Direction.ASC);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, orden));
+
+        Page<ProductoResponseDTO> pagina = productoService.listarConFiltros(
+                busqueda, categoria, marca, precioMin, precioMax, btuMin, btuMax, pageable);
+
+        return ResponseEntity.ok(pagina);
     }
 
     @GetMapping("/{id}")

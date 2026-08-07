@@ -10,9 +10,11 @@ import com.climatizacion.sistema_clima.repository.ProductoRepository;
 import com.climatizacion.sistema_clima.service.CloudinaryService;
 import com.climatizacion.sistema_clima.service.HistorialPrecioService;
 import com.climatizacion.sistema_clima.service.ProductoService;
+import com.climatizacion.sistema_clima.specification.ProductoSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -288,5 +290,16 @@ public class ProductoImpl implements ProductoService {
                 .nombreCategoria(entity.getCategoria().getNombre())
                 .imagenesUrls(urls)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductoResponseDTO> listarConFiltros(String busqueda, String categoria, String marca,
+                                                      Double precioMin, Double precioMax,
+                                                      Integer btuMin, Integer btuMax, Pageable pageable) {
+        Specification<ProductoEntity> spec = ProductoSpecification.conFiltros(
+                busqueda, categoria, marca, precioMin, precioMax, btuMin, btuMax);
+        Page<ProductoEntity> pagina = productoRepository.findAll(spec, pageable);
+        return pagina.map(this::mapearAResponseDTO);
     }
 }
