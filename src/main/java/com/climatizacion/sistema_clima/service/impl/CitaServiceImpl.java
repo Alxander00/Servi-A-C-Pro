@@ -7,6 +7,8 @@ import com.climatizacion.sistema_clima.entities.PedidoEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.enums.Rol;
+import com.climatizacion.sistema_clima.exceptions.CitaNotFoundException;
+import com.climatizacion.sistema_clima.exceptions.UsuarioNoEncontradoException;
 import com.climatizacion.sistema_clima.repository.CitaRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
@@ -76,11 +78,11 @@ public class CitaServiceImpl implements CitaService {
     public CitaResponseDTO crear(CitaRequestDTO request) {
         // ✅ Validar que el cliente exista
         UsuarioEntity cliente = usuarioRepository.findById(request.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Cliente no encontrado"));
 
         // ✅ Validar que el técnico exista y sea TÉCNICO
         UsuarioEntity tecnico = usuarioRepository.findById(request.getIdTecnico())
-                .orElseThrow(() -> new RuntimeException("Técnico no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Técnico no encontrado"));
 
         if (tecnico.getRol() != Rol.TECNICO) {
             throw new RuntimeException("El usuario seleccionado no es un técnico válido");
@@ -140,7 +142,7 @@ public class CitaServiceImpl implements CitaService {
     @Transactional
     public CitaResponseDTO actualizar(Long id, CitaRequestDTO request) {
         CitaEntity cita = citaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada"));
 
         // ✅ Validar fechas
         if (request.getFechaInicio().isAfter(request.getFechaFin())) {
@@ -163,7 +165,7 @@ public class CitaServiceImpl implements CitaService {
     @Transactional
     public void cambiarEstado(Long id, String estado) {
         CitaEntity cita = citaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada"));
         cita.setEstado(EstadoCita.valueOf(estado.toUpperCase()));
         citaRepository.save(cita);
     }
@@ -208,7 +210,7 @@ public class CitaServiceImpl implements CitaService {
                                                  List<MultipartFile> fotosDespues,
                                                  String firmaBase64) {
         CitaEntity cita = citaRepository.findById(idCita)
-                .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada"));
 
         EstadoCita estadoEnum;
         try {

@@ -61,7 +61,11 @@ public class JwtUtil {
     // ✅ NUEVO: Validar token sin UserDetails (solo expiración)
     public boolean validateToken(String token) {
         try {
-            return !isTokenExpired(token);
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
         } catch (Exception e) {
             return false;
         }

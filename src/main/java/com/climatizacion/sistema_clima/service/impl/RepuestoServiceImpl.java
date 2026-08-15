@@ -4,6 +4,8 @@ import com.climatizacion.sistema_clima.dto.RepuestoUsadoDTO;
 import com.climatizacion.sistema_clima.entities.CitaEntity;
 import com.climatizacion.sistema_clima.entities.RepuestoEntity;
 import com.climatizacion.sistema_clima.entities.UsoRepuestoEntity;
+import com.climatizacion.sistema_clima.exceptions.CitaNotFoundException;
+import com.climatizacion.sistema_clima.exceptions.StockInsuficienteException;
 import com.climatizacion.sistema_clima.repository.CitaRepository;
 import com.climatizacion.sistema_clima.repository.RepuestoRepository;
 import com.climatizacion.sistema_clima.repository.UsoRepuestoRepository;
@@ -36,7 +38,7 @@ public class RepuestoServiceImpl implements RepuestoService {
         }
 
         CitaEntity cita = citaRepository.findById(idCita)
-                .orElseThrow(() -> new RuntimeException("Cita no encontrada para registrar repuestos"));
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada para registrar repuestos"));
 
         for (RepuestoUsadoDTO dto : repuestosUsados) {
             RepuestoEntity repuesto = repuestoRepository.findById(dto.getIdRepuesto())
@@ -44,7 +46,7 @@ public class RepuestoServiceImpl implements RepuestoService {
 
             // Validar que tengamos suficiente stock
             if (repuesto.getStockActual() < dto.getCantidad()) {
-                throw new RuntimeException("Stock insuficiente para: " + repuesto.getNombre() +
+                throw new StockInsuficienteException("Stock insuficiente para: " + repuesto.getNombre() +
                         ". Intentas usar " + dto.getCantidad() + " pero solo quedan " + repuesto.getStockActual());
             }
 

@@ -5,6 +5,7 @@ import com.climatizacion.sistema_clima.dto.ProductoResponseDTO;
 import com.climatizacion.sistema_clima.entities.CategoriaEntity;
 import com.climatizacion.sistema_clima.entities.ProductoEntity;
 import com.climatizacion.sistema_clima.entities.ProductoImagen;
+import com.climatizacion.sistema_clima.exceptions.ProductoNotFoundException;
 import com.climatizacion.sistema_clima.repository.CategoriaRepository;
 import com.climatizacion.sistema_clima.repository.ProductoRepository;
 import com.climatizacion.sistema_clima.service.CloudinaryService;
@@ -70,7 +71,7 @@ public class ProductoImpl implements ProductoService {
     @Transactional(readOnly = true)
     public ProductoResponseDTO obtenerPorId(Long idProducto) {
         ProductoEntity producto = productoRepository.findById(idProducto)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new ProductoNotFoundException("Producto no encontrado"));
         return mapearAResponseDTO(producto);
     }
 
@@ -95,18 +96,18 @@ public class ProductoImpl implements ProductoService {
     public ProductoResponseDTO actualizarConImagenes(Long id, ProductoRequestDTO dto, List<MultipartFile> nuevasImagenes) {
         // Validar existencia
         ProductoEntity producto = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new ProductoNotFoundException("Producto no encontrado"));
 
-        // ✅ Validar categoría
+        // Validar categoría
         CategoriaEntity categoria = categoriaRepository.findById(dto.getIdCategoria())
                 .orElseThrow(() -> new RuntimeException("Categoría no existe"));
 
-        // ✅ Validar precio
+        // Validar precio
         if (dto.getPrecio() == null || dto.getPrecio().compareTo(BigDecimal.ZERO) < 0) {
             throw new RuntimeException("El precio no puede ser negativo");
         }
 
-        // ✅ Validar stock
+        // Validar stock
         if (dto.getStock() == null || dto.getStock() < 0) {
             throw new RuntimeException("El stock no puede ser negativo");
         }
@@ -120,9 +121,29 @@ public class ProductoImpl implements ProductoService {
         producto.setStock(dto.getStock());
         producto.setCategoria(categoria);
 
-        // Manejo de imágenes
-        if (dto.getImagenesUrls() != null) {
+        // ===== MANEJO DE IMÁGENES CON ELIMINACIÓN DE LAS VIEJAS =====
+        // 1. Obtener la lista actual de URLs de imágenes
+        List<String> urlsActuales = producto.getImagenes().stream()
+                .map(ProductoImagen::getImagenUrl)
+                .collect(Collectors.toList());
+
+        // 2. Si el DTO trae una lista de URLs (el frontend envió la lista completa)
+        if (dto.getImagenesUrls() != null && !dto.getImagenesUrls().isEmpty()) {
+            // Eliminar de Cloudinary las imágenes que ya no están en la nueva lista
+            for (String urlActual : urlsActuales) {
+                if (!dto.getImagenesUrls().contains(urlActual)) {
+                    try {
+                        cloudinaryService.eliminarImagenPorUrl(urlActual);
+                    } catch (IOException e) {
+                        System.err.println("⚠️ No se pudo eliminar imagen: " + urlActual + " - " + e.getMessage());
+                    }
+                }
+            }
+
+            // Limpiar la lista de imágenes de la entidad
             producto.getImagenes().clear();
+
+            // Agregar las nuevas URLs (del DTO)
             for (String url : dto.getImagenesUrls()) {
                 ProductoImagen imagenEntity = ProductoImagen.builder()
                         .imagenUrl(url)
@@ -133,6 +154,7 @@ public class ProductoImpl implements ProductoService {
             }
         }
 
+        // 3. Si se subieron nuevos archivos (nuevasImagenes)
         if (nuevasImagenes != null && !nuevasImagenes.isEmpty()) {
             for (MultipartFile img : nuevasImagenes) {
                 try {
@@ -151,6 +173,7 @@ public class ProductoImpl implements ProductoService {
 
         ProductoEntity actualizado = productoRepository.save(producto);
 
+        // Registrar cambio de precio si aplica
         if (precioAnterior.compareTo(dto.getPrecio()) != 0) {
             historialPrecioService.registrarCambioPrecio(id, dto.getPrecio());
         }
@@ -166,7 +189,7 @@ public class ProductoImpl implements ProductoService {
     @Transactional
     public void eliminar(Long idProducto) {
         ProductoEntity producto = productoRepository.findById(idProducto)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new ProductoNotFoundException("Producto no encontrado"));
         producto.setActivo(false);
         productoRepository.save(producto);
     }
@@ -254,7 +277,7 @@ public class ProductoImpl implements ProductoService {
     @Transactional(readOnly = true)
     public Long obtenerStock(Long idProducto) {
         ProductoEntity producto = productoRepository.findById(idProducto)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new ProductoNotFoundException("Producto no encontrado"));
         return producto.getStock();
     }
 

@@ -5,6 +5,8 @@ import com.climatizacion.sistema_clima.dto.SolicitudResponseDTO;
 import com.climatizacion.sistema_clima.entities.*;
 import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.enums.Rol;
+import com.climatizacion.sistema_clima.exceptions.SolicitudNotFoundException;
+import com.climatizacion.sistema_clima.exceptions.UsuarioNoEncontradoException;
 import com.climatizacion.sistema_clima.repository.*;
 import com.climatizacion.sistema_clima.service.NotificacionService;
 import com.climatizacion.sistema_clima.service.ResendEmailService;
@@ -47,7 +49,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     @Transactional
     public SolicitudResponseDTO crearSolicitud(SolicitudRequestDTO request) {
         UsuarioEntity cliente = usuarioRepository.findById(request.getIdCliente())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
 
         SolicitudServicioEntity solicitud = SolicitudServicioEntity.builder()
                 .cliente(cliente)
@@ -112,7 +114,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     public void asignarTecnico(Long idSolicitud, Long idTecnico, LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         // Validar que la solicitud exista y esté pendiente
         SolicitudServicioEntity solicitud = solicitudRepository.findById(idSolicitud)
-                .orElseThrow(() -> new RuntimeException("Solicitud no encontrada"));
+                .orElseThrow(() -> new SolicitudNotFoundException("Solicitud no encontrada"));
 
         if (!"PENDIENTE".equals(solicitud.getEstado())) {
             throw new RuntimeException("La solicitud ya fue procesada");
@@ -120,7 +122,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
 
         // ✅ Validar que el técnico exista y sea TÉCNICO
         UsuarioEntity tecnico = usuarioRepository.findById(idTecnico)
-                .orElseThrow(() -> new RuntimeException("Técnico no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Técnico no encontrado"));
 
         if (tecnico.getRol() != Rol.TECNICO) {
             throw new RuntimeException("El usuario seleccionado no es un técnico válido");
@@ -196,7 +198,7 @@ public class SolicitudServicioServiceImpl implements SolicitudServicioService {
     @Transactional
     public void rechazarSolicitud(Long idSolicitud) {
         SolicitudServicioEntity solicitud = solicitudRepository.findById(idSolicitud)
-                .orElseThrow(() -> new RuntimeException("Solicitud no encontrada"));
+                .orElseThrow(() -> new SolicitudNotFoundException("Solicitud no encontrada"));
         solicitud.setEstado("RECHAZADA");
         solicitudRepository.save(solicitud);
     }

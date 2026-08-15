@@ -2,6 +2,9 @@ package com.climatizacion.sistema_clima.service.impl;
 
 import com.climatizacion.sistema_clima.dto.*;
 import com.climatizacion.sistema_clima.entities.*;
+import com.climatizacion.sistema_clima.exceptions.PedidoNotFoundException;
+import com.climatizacion.sistema_clima.exceptions.StockInsuficienteException;
+import com.climatizacion.sistema_clima.exceptions.UsuarioNoEncontradoException;
 import com.climatizacion.sistema_clima.repository.DetallePedidoRepository;
 import com.climatizacion.sistema_clima.repository.PedidoRepository;
 import com.climatizacion.sistema_clima.repository.ProductoRepository;
@@ -40,32 +43,32 @@ public class PedidoServiceImpl implements PedidoService {
      * Crea un pedido completo con sus detalles.
      * @param dto Datos del pedido (usuario, items, total, dirección)
      * @return Entidad del pedido creado
-     * @throws RuntimeException si el usuario no existe, o algún producto no tiene stock
+     * @throws StockInsuficienteException() si el usuario no existe, o algún producto no tiene stock
      */
     @Override
     @Transactional
     public PedidoEntity crearPedidoCompleto(PedidoRequestDTO dto) {
         // ✅ Validar que el usuario exista
-        UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(dto.getIdUsuario()))
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        UsuarioEntity usuario = usuarioRepository.findById(dto.getIdUsuario())
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
 
         if (!usuario.isActivo()) {
-            throw new RuntimeException("El usuario no está activo en el sistema");
+            throw new UsuarioNoEncontradoException("El usuario no está activo en el sistema");
         }
 
         // ✅ Validar que la dirección no esté vacía
         if (dto.getDireccion() == null || dto.getDireccion().trim().isEmpty()) {
-            throw new RuntimeException("La dirección de instalación es obligatoria");
+            throw new UsuarioNoEncontradoException("La dirección de instalación es obligatoria");
         }
 
         // ✅ Validar que el total no sea negativo
         if (dto.getTotal() == null || dto.getTotal() < 0) {
-            throw new RuntimeException("El total del pedido no puede ser negativo");
+            throw new UsuarioNoEncontradoException("El total del pedido no puede ser negativo");
         }
 
         // ✅ Validar que haya al menos un item
         if (dto.getItems() == null || dto.getItems().isEmpty()) {
-            throw new RuntimeException("El pedido debe tener al menos un producto");
+            throw new UsuarioNoEncontradoException("El pedido debe tener al menos un producto");
         }
 
         PedidoEntity pedido = new PedidoEntity();
@@ -83,17 +86,17 @@ public class PedidoServiceImpl implements PedidoService {
         for (DetallePedidoRequestDTO item : dto.getItems()) {
             // ✅ Validar que el producto exista
             ProductoEntity producto = productoRepository.findById(item.getIdProducto())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                    .orElseThrow(() -> new UsuarioNoEncontradoException("Producto no encontrado"));
 
             // ✅ Validar que la cantidad sea positiva
             if (item.getCantidad() == null || item.getCantidad() <= 0) {
-                throw new RuntimeException("La cantidad del producto " + producto.getNombre() + " debe ser mayor a cero");
+                throw new StockInsuficienteException("La cantidad del producto " + producto.getNombre() + " debe ser mayor a cero");
             }
 
             // Descontar stock
             int rowsUpdated = productoRepository.descontarStock(item.getIdProducto(), item.getCantidad());
             if (rowsUpdated == 0) {
-                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre() +
+                throw new StockInsuficienteException("Stock insuficiente para: " + producto.getNombre() +
                         ". Disponible: " + producto.getStock());
             }
 
@@ -128,7 +131,7 @@ public class PedidoServiceImpl implements PedidoService {
     @Override
     public PedidoEntity obtenerPorId(Long id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+                .orElseThrow(() -> new PedidoNotFoundException("Pedido no encontrado"));
     }
 
     @Override
@@ -156,8 +159,8 @@ public class PedidoServiceImpl implements PedidoService {
 
         // Notificar al usuario
         try {
-            UsuarioEntity usuario = usuarioRepository.findById(Long.valueOf(pedido.getIdUsuario()))
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            UsuarioEntity usuario = usuarioRepository.findById(pedido.getIdUsuario())
+                    .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
             resendEmailService.enviarCorreoCambioEstadoPedido(usuario.getEmail(), usuario.getNombres(),
                     id, estadoAnterior, nuevoEstado);
         } catch (Exception e) {

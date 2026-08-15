@@ -4,6 +4,7 @@ import com.climatizacion.sistema_clima.dto.UsuarioDTO;
 import com.climatizacion.sistema_clima.entities.PasswordResetTokenEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.enums.Rol;
+import com.climatizacion.sistema_clima.exceptions.UsuarioNoEncontradoException;
 import com.climatizacion.sistema_clima.repository.PasswordResetTokenRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.CloudinaryService;
@@ -49,12 +50,12 @@ public class UsuarioImpl implements UsuarioService {
         System.out.println("🔍 1. Inicio registro: " + request.getEmail());
         try {
             if (usuarioRepository.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("El correo electrónico '" + request.getEmail() + "' ya está registrado.");
+                throw new UsuarioNoEncontradoException("El correo electrónico '" + request.getEmail() + "' ya está registrado.");
             }
             System.out.println("✅ 2. Email válido");
 
             if (usuarioRepository.existsByDui(request.getDui())) {
-                throw new RuntimeException("El DUI '" + request.getDui() + "' ya está registrado.");
+                throw new UsuarioNoEncontradoException("El DUI '" + request.getDui() + "' ya está registrado.");
             }
             System.out.println("✅ 3. DUI válido");
 
@@ -121,7 +122,7 @@ public class UsuarioImpl implements UsuarioService {
     @Transactional(readOnly = true)
     public UsuarioDTO buscarPorEmail(String correo) {
         UsuarioEntity usuario = usuarioRepository.findByEmail(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con correo: " + correo));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado con correo: " + correo));
         return convertirADTO(usuario);
     }
 
@@ -148,11 +149,11 @@ public class UsuarioImpl implements UsuarioService {
         // Validar que el email no esté en otro usuario
         if (!usuarioExistente.getEmail().equals(request.getEmail())
                 && usuarioRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("El correo electrónico '" + request.getEmail() + "' ya está registrado por otro usuario.");
+            throw new UsuarioNoEncontradoException("El correo electrónico '" + request.getEmail() + "' ya está registrado por otro usuario.");
         }
         if (!usuarioExistente.getDui().equals(request.getDui())
                 && usuarioRepository.existsByDui(request.getDui())) {
-            throw new RuntimeException("El DUI '" + request.getDui() + "' ya está registrado por otro usuario.");
+            throw new UsuarioNoEncontradoException("El DUI '" + request.getDui() + "' ya está registrado por otro usuario.");
         }
 
         usuarioExistente.setNombres(request.getNombre());
@@ -166,9 +167,15 @@ public class UsuarioImpl implements UsuarioService {
         usuarioExistente.setDireccion(request.getDireccion());
 
         // Geocodificar si es cliente y cambió dirección
-        if (request.getRol() == Rol.CLIENTE && request.getDireccion() != null && !request.getDireccion().isEmpty()) {
+        String direccionActual = usuarioExistente.getDireccion();
+        String nuevaDireccion = request.getDireccion();
+
+        if (request.getRol() == Rol.CLIENTE
+                && nuevaDireccion != null
+                && !nuevaDireccion.isEmpty()
+                && !nuevaDireccion.equals(direccionActual)) {
             try {
-                double[] coords = geocodingService.geocode(request.getDireccion());
+                double[] coords = geocodingService.geocode(nuevaDireccion);
                 if (coords != null) {
                     usuarioExistente.setLatitud(BigDecimal.valueOf(coords[0]));
                     usuarioExistente.setLongitud(BigDecimal.valueOf(coords[1]));
@@ -238,9 +245,9 @@ public class UsuarioImpl implements UsuarioService {
     @Transactional
     public void restablecerPassword(String token, String nuevaPassword) {
         PasswordResetTokenEntity resetToken = tokenRepository.findByTokenAndUsedFalse(token)
-                .orElseThrow(() -> new RuntimeException("Token inválido o ya usado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Token inválido o ya usado"));
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("El token ha expirado");
+            throw new UsuarioNoEncontradoException("El token ha expirado");
         }
         UsuarioEntity user = resetToken.getUsuario();
         user.setPassword(passwordEncoder.encode(nuevaPassword));
@@ -255,22 +262,22 @@ public class UsuarioImpl implements UsuarioService {
     public UsuarioDTO actualizarAvatar(String email, MultipartFile archivo) {
         // 1. Buscar usuario por email
         UsuarioEntity usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
 
         // 2. Validar que el archivo no esté vacío
         if (archivo == null || archivo.isEmpty()) {
-            throw new RuntimeException("Debes seleccionar una imagen.");
+            throw new UsuarioNoEncontradoException("Debes seleccionar una imagen.");
         }
 
         // 3. Validar tamaño máximo (2MB)
         if (archivo.getSize() > 2 * 1024 * 1024) {
-            throw new RuntimeException("La imagen no puede superar los 2MB.");
+            throw new UsuarioNoEncontradoException("La imagen no puede superar los 2MB.");
         }
 
         // 4. Validar tipo de archivo (opcional pero recomendado)
         String contentType = archivo.getContentType();
         if (contentType == null || !(contentType.startsWith("image/"))) {
-            throw new RuntimeException("El archivo debe ser una imagen (JPG, PNG, WEBP, etc.)");
+            throw new UsuarioNoEncontradoException("El archivo debe ser una imagen (JPG, PNG, WEBP, etc.)");
         }
 
         // 5. Subir la imagen a Cloudinary
@@ -278,7 +285,7 @@ public class UsuarioImpl implements UsuarioService {
             String urlPublica = cloudinaryService.subirImagen(archivo);
             usuario.setFotoUrl(urlPublica);
         } catch (Exception e) {
-            throw new RuntimeException("Error al subir la imagen: " + e.getMessage());
+            throw new UsuarioNoEncontradoException("Error al subir la imagen: " + e.getMessage());
         }
 
         // 6. Guardar usuario con la nueva URL
@@ -290,7 +297,7 @@ public class UsuarioImpl implements UsuarioService {
 
     private UsuarioEntity obtenerEntidadPorId(Long id) {
         return usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado con ID: " + id));
     }
 
     private UsuarioDTO convertirADTO(UsuarioEntity usuario) {

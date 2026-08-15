@@ -40,4 +40,20 @@ public class CloudinaryService {
         );
         return uploadResult.get("secure_url").toString();
     }
+
+    public void eliminarImagenPorUrl(String imageUrl) throws IOException {
+        if (imageUrl == null || imageUrl.isEmpty()) return;
+
+        // Extraer el public_id de la URL de Cloudinary
+        // Ejemplo: https://res.cloudinary.com/.../upload/v1234567890/mi_imagen.jpg
+        // Tomamos la parte después de "/upload/" y antes de la extensión
+        String publicId = imageUrl.substring(imageUrl.lastIndexOf("/upload/") + 8, imageUrl.lastIndexOf("."));
+
+        // Si la URL tiene versión (v1234567890), la omitimos
+        if (publicId.matches("v\\d+/.+")) {
+            publicId = publicId.substring(publicId.indexOf("/") + 1);
+        }
+
+        cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+    }
 }

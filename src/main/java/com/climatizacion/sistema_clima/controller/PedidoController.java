@@ -7,6 +7,13 @@ import com.climatizacion.sistema_clima.entities.PedidoEntity;
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.service.PedidoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -34,6 +41,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/pedidos")
 @RequiredArgsConstructor
+@Tag(name = "Pedidos", description = "Gestión de pedidos de equipos de aire acondicionado")
 public class PedidoController {
 
     private final PedidoService service;
@@ -41,49 +49,83 @@ public class PedidoController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('ADMIN') or (#dto.idUsuario == authentication.principal.idUsuario and hasAuthority('CLIENTE'))")
+    @Operation(summary = "Crear un nuevo pedido", description = "Registra un pedido completo con sus productos. Solo ADMIN o el propio CLIENTE.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Pedido creado exitosamente",
+                    content = @Content(schema = @Schema(implementation = PedidoEntity.class))),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos o stock insuficiente"),
+            @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
     public ResponseEntity<?> crearPedidoCompleto(@RequestBody PedidoRequestDTO dto) {
         return new ResponseEntity<>(service.crearPedidoCompleto(dto), HttpStatus.CREATED);
     }
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Listar todos los pedidos", description = "Obtiene la lista completa de pedidos. Solo ADMIN.")
+    @ApiResponse(responseCode = "200", description = "Lista de pedidos")
     public List<PedidoEntity> listar() {
         return service.listar();
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or @pedidoServiceImpl.obtenerPorId(#id).idUsuario == authentication.principal.idUsuario")
-    public PedidoDetalleResponseDTO obtener(@PathVariable Long id) {
+    @Operation(summary = "Obtener pedido por ID", description = "Devuelve los detalles completos de un pedido específico.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Pedido encontrado",
+                    content = @Content(schema = @Schema(implementation = PedidoDetalleResponseDTO.class))),
+            @ApiResponse(responseCode = "404", description = "Pedido no encontrado")
+    })
+    public PedidoDetalleResponseDTO obtener(
+            @Parameter(description = "ID del pedido", required = true) @PathVariable Long id) {
         return service.obtenerPedidoConDetalles(id);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Eliminar pedido", description = "Elimina un pedido de la base de datos. Solo ADMIN.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Eliminado correctamente"),
+            @ApiResponse(responseCode = "404", description = "Pedido no encontrado")
+    })
     public void eliminar(@PathVariable Long id) {
         service.eliminar(id);
     }
 
     @GetMapping("/usuario/{idUsuario}")
     @PreAuthorize("hasAuthority('ADMIN') or #idUsuario == authentication.principal.idUsuario")
-    public List<PedidoEntity> listarPorUsuario(@PathVariable Long idUsuario) {
+    @Operation(summary = "Listar pedidos por usuario", description = "Obtiene todos los pedidos de un usuario específico.")
+    @ApiResponse(responseCode = "200", description = "Lista de pedidos del usuario")
+    public List<PedidoEntity> listarPorUsuario(
+            @Parameter(description = "ID del usuario", required = true) @PathVariable Long idUsuario) {
         return service.listarPorUsuario(idUsuario);
     }
 
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Void> cambiarEstado(@PathVariable Long id, @RequestParam String estado) {
+    @Operation(summary = "Cambiar estado del pedido", description = "Actualiza el estado de un pedido. Solo ADMIN.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Estado actualizado"),
+            @ApiResponse(responseCode = "404", description = "Pedido no encontrado")
+    })
+    public ResponseEntity<Void> cambiarEstado(
+            @Parameter(description = "ID del pedido", required = true) @PathVariable Long id,
+            @Parameter(description = "Nuevo estado: Pendiente, En Proceso, Completado, Cancelado", required = true)
+            @RequestParam String estado) {
         service.cambiarEstado(id, estado);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/exportar/excel")
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Exportar pedidos a Excel", description = "Genera un archivo Excel con los pedidos filtrados. Solo ADMIN.")
+    @ApiResponse(responseCode = "200", description = "Archivo Excel generado", content = @Content(mediaType = "application/octet-stream"))
     public ResponseEntity<byte[]> exportarPedidosAExcel(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin,
-            @RequestParam(required = false) String estado,
-            @RequestParam(required = false) Long idCliente,
-            @RequestParam(required = false) String emailCliente) {
+            @Parameter(description = "Fecha de inicio (ISO-8601)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
+            @Parameter(description = "Fecha de fin (ISO-8601)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin,
+            @Parameter(description = "Filtrar por estado") @RequestParam(required = false) String estado,
+            @Parameter(description = "ID del cliente") @RequestParam(required = false) Long idCliente,
+            @Parameter(description = "Email del cliente") @RequestParam(required = false) String emailCliente) {
 
         if (emailCliente != null && !emailCliente.isEmpty() && idCliente == null) {
             UsuarioEntity usuario = usuarioRepository.findByEmail(emailCliente).orElse(null);
@@ -94,7 +136,6 @@ public class PedidoController {
 
         List<PedidoEntity> pedidos = service.listarConFiltros(fechaInicio, fechaFin, estado, idCliente, emailCliente);
 
-        // Generar el Excel y manejar IOExceptions
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Workbook workbook = generarExcel(pedidos, fechaInicio, fechaFin, estado, idCliente, emailCliente);
             workbook.write(out);
@@ -117,7 +158,7 @@ public class PedidoController {
             Workbook workbook = new XSSFWorkbook();
             Sheet sheet = workbook.createSheet("Reporte de Pedidos");
 
-            // Estilos (igual que antes)
+            // Estilos
             CellStyle titleStyle = workbook.createCellStyle();
             Font titleFont = workbook.createFont();
             titleFont.setBold(true);
@@ -287,33 +328,42 @@ public class PedidoController {
 
     @GetMapping("/conteos/pendientes/cliente/{idUsuario}")
     @PreAuthorize("hasAuthority('ADMIN') or #idUsuario == authentication.principal.idUsuario")
-    public ResponseEntity<Long> contarPedidosPendientesCliente(@PathVariable Long idUsuario) {
+    @Operation(summary = "Contar pedidos pendientes de un cliente", description = "Devuelve la cantidad de pedidos en estado Pendiente o En Proceso de un cliente.")
+    @ApiResponse(responseCode = "200", description = "Cantidad de pedidos pendientes")
+    public ResponseEntity<Long> contarPedidosPendientesCliente(
+            @Parameter(description = "ID del usuario") @PathVariable Long idUsuario) {
         return ResponseEntity.ok(service.contarPedidosPorEstadoYUsuario(idUsuario, List.of("Pendiente", "En Proceso")));
     }
 
     @GetMapping("/conteos/pendientes/admin")
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Contar pedidos pendientes (admin)", description = "Devuelve la cantidad total de pedidos en estado Pendiente o En Proceso. Solo ADMIN.")
+    @ApiResponse(responseCode = "200", description = "Cantidad de pedidos pendientes")
     public ResponseEntity<Long> contarPedidosPendientesAdmin() {
         return ResponseEntity.ok(service.contarPedidosPorEstado(List.of("Pendiente", "En Proceso")));
     }
 
     @GetMapping("/usuario/{idUsuario}/paginado")
     @PreAuthorize("hasAuthority('ADMIN') or #idUsuario == authentication.principal.idUsuario")
+    @Operation(summary = "Listar pedidos de usuario con paginación", description = "Devuelve una página de pedidos de un usuario específico.")
+    @ApiResponse(responseCode = "200", description = "Página de pedidos del usuario")
     public ResponseEntity<Page<PedidoResponseDTO>> listarPorUsuarioPaginado(
-            @PathVariable Long idUsuario,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "6") int size) {
+            @Parameter(description = "ID del usuario") @PathVariable Long idUsuario,
+            @Parameter(description = "Número de página") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamaño de página") @RequestParam(defaultValue = "6") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(service.listarPorUsuarioPaginadoDTO(idUsuario, pageable));
     }
 
     @GetMapping("/paginado")
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Listar pedidos paginados con filtros", description = "Devuelve una página de pedidos con filtros de búsqueda y estado. Solo ADMIN.")
+    @ApiResponse(responseCode = "200", description = "Página de pedidos")
     public ResponseEntity<Page<PedidoResponseDTO>> listarPedidosPaginados(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "8") int size,
-            @RequestParam(defaultValue = "") String search,
-            @RequestParam(defaultValue = "") String estado) {
+            @Parameter(description = "Número de página") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamaño de página") @RequestParam(defaultValue = "8") int size,
+            @Parameter(description = "Texto de búsqueda (ID o nombre de cliente)") @RequestParam(defaultValue = "") String search,
+            @Parameter(description = "Filtrar por estado") @RequestParam(defaultValue = "") String estado) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("fechaPedido").descending());
         return ResponseEntity.ok(service.obtenerPedidosPaginados(search, estado, pageable));
     }

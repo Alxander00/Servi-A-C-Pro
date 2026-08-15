@@ -5,6 +5,13 @@ import com.climatizacion.sistema_clima.dto.ProductoRequestDTO;
 import com.climatizacion.sistema_clima.dto.ProductoResponseDTO;
 import com.climatizacion.sistema_clima.service.HistorialPrecioService;
 import com.climatizacion.sistema_clima.service.ProductoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +34,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/productos")
 @RequiredArgsConstructor
+@Tag(name = "Productos", description = "Gestión del catálogo de equipos de aire acondicionado")
 public class ProductoController {
 
     private final ProductoService productoService;
@@ -34,46 +42,54 @@ public class ProductoController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Crear producto", description = "Registra un nuevo equipo con imágenes. Requiere rol ADMIN.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Producto creado"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @ApiResponse(responseCode = "403", description = "No autorizado (solo ADMIN)")
+    })
     public ResponseEntity<ProductoResponseDTO> crear(
-            @RequestPart("producto") @Valid ProductoRequestDTO dto,
-            @RequestPart(value = "imagenes", required = false) List<MultipartFile> imagenes) {
+            @Parameter(description = "Datos del producto en formato JSON") @RequestPart("producto") @Valid ProductoRequestDTO dto,
+            @Parameter(description = "Archivos de imagen (opcional)") @RequestPart(value = "imagenes", required = false) List<MultipartFile> imagenes) {
         ProductoResponseDTO response = productoService.crearConImagenes(dto, imagenes);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Actualizar producto con imágenes", description = "Actualiza un equipo y sus imágenes. Requiere ADMIN.")
     public ResponseEntity<ProductoResponseDTO> actualizarConImagenes(
-            @PathVariable Long id,
-            @RequestPart("producto") @Valid ProductoRequestDTO dto,
-            @RequestPart(value = "imagenes", required = false) List<MultipartFile> imagenes) {
-        System.out.println("📥 Recibiendo actualización de producto ID: " + id);
-        System.out.println("DTO: " + dto);
+            @Parameter(description = "ID del producto") @PathVariable Long id,
+            @Parameter(description = "Datos del producto en JSON") @RequestPart("producto") @Valid ProductoRequestDTO dto,
+            @Parameter(description = "Nuevas imágenes (opcional)") @RequestPart(value = "imagenes", required = false) List<MultipartFile> imagenes) {
         ProductoResponseDTO response = productoService.actualizarConImagenes(id, dto, imagenes);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<ProductoResponseDTO> actualizarJson(@PathVariable Long id, @Valid @RequestBody ProductoRequestDTO dto) {
+    @Operation(summary = "Actualizar producto (solo datos)", description = "Actualiza un equipo sin modificar imágenes. Requiere ADMIN.")
+    public ResponseEntity<ProductoResponseDTO> actualizarJson(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductoRequestDTO dto) {
         return ResponseEntity.ok(productoService.actualizar(id, dto));
     }
 
     @GetMapping
+    @Operation(summary = "Listar productos con filtros", description = "Obtiene una lista paginada de productos activos con múltiples filtros.")
     public ResponseEntity<Page<ProductoResponseDTO>> listarActivos(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String busqueda,
-            @RequestParam(required = false) String categoria,
-            @RequestParam(required = false) String marca,
-            @RequestParam(required = false) Double precioMin,
-            @RequestParam(required = false) Double precioMax,
-            @RequestParam(required = false) Integer btuMin,
-            @RequestParam(required = false) Integer btuMax,
-            @RequestParam(defaultValue = "idProducto") String orden,
-            @RequestParam(defaultValue = "ASC") String direccion) {
+            @Parameter(description = "Número de página") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamaño de página") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Texto de búsqueda (nombre o descripción)") @RequestParam(required = false) String busqueda,
+            @Parameter(description = "Nombre de la categoría") @RequestParam(required = false) String categoria,
+            @Parameter(description = "Marca del equipo") @RequestParam(required = false) String marca,
+            @Parameter(description = "Precio mínimo") @RequestParam(required = false) Double precioMin,
+            @Parameter(description = "Precio máximo") @RequestParam(required = false) Double precioMax,
+            @Parameter(description = "BTU mínimo") @RequestParam(required = false) Integer btuMin,
+            @Parameter(description = "BTU máximo") @RequestParam(required = false) Integer btuMax,
+            @Parameter(description = "Campo de ordenación (ej. precio, capacidadBtu)") @RequestParam(defaultValue = "idProducto") String orden,
+            @Parameter(description = "Dirección: ASC o DESC") @RequestParam(defaultValue = "ASC") String direccion) {
 
-        // Validación básica de dirección
         Sort.Direction dir = Sort.Direction.fromOptionalString(direccion).orElse(Sort.Direction.ASC);
         Pageable pageable = PageRequest.of(page, size, Sort.by(dir, orden));
 
@@ -84,25 +100,48 @@ public class ProductoController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Obtener producto por ID", description = "Devuelve los detalles de un producto específico.")
     public ResponseEntity<ProductoResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(productoService.obtenerPorId(id));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Eliminar producto (soft delete)", description = "Marca el producto como inactivo. Requiere ADMIN.")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         productoService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/populares")
+    @Operation(summary = "Productos más vendidos", description = "Lista los productos activos ordenados por popularidad (más vendidos).")
     public ResponseEntity<List<ProductoResponseDTO>> listarPopulares() {
         return ResponseEntity.ok(productoService.listarActivosOrdenadosPorPopularidad());
     }
 
     @GetMapping("/{id}/historial-precios")
+    @Operation(summary = "Historial de precios", description = "Obtiene el histórico de cambios de precio de un producto.")
     public ResponseEntity<List<HistorialPrecioDTO>> obtenerHistorialPrecios(@PathVariable Long id) {
         return ResponseEntity.ok(historialPrecioService.obtenerHistorialPorProducto(id));
+    }
+
+    @GetMapping("/{id}/stock")
+    @Operation(summary = "Consultar stock", description = "Devuelve la cantidad disponible de un producto.")
+    public ResponseEntity<Long> obtenerStock(@PathVariable Long id) {
+        ProductoResponseDTO producto = productoService.obtenerPorId(id);
+        return ResponseEntity.ok(producto.getStock());
+    }
+
+    @GetMapping("/paginado")
+    @Operation(summary = "Listar productos paginado (filtro por búsqueda y categoría)",
+            description = "Versión simplificada del listado con paginación y filtros por texto y categoría.")
+    public ResponseEntity<Page<ProductoResponseDTO>> listarProductosPaginados(
+            @Parameter(description = "Número de página") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamaño de página") @RequestParam(defaultValue = "8") int size,
+            @Parameter(description = "Texto de búsqueda") @RequestParam(defaultValue = "") String search,
+            @Parameter(description = "ID de categoría (como string)") @RequestParam(defaultValue = "") String categoria) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("idProducto").descending());
+        return ResponseEntity.ok(productoService.obtenerProductosPaginados(search, categoria, pageable));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -114,21 +153,5 @@ public class ProductoController {
             errors.put(fieldName, errorMessage);
         });
         return ResponseEntity.badRequest().body(errors);
-    }
-
-    @GetMapping("/{id}/stock")
-    public ResponseEntity<Long> obtenerStock(@PathVariable Long id) {
-        ProductoResponseDTO producto = productoService.obtenerPorId(id);
-        return ResponseEntity.ok(producto.getStock());
-    }
-
-    @GetMapping("/paginado")
-    public ResponseEntity<Page<ProductoResponseDTO>> listarProductosPaginados(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "8") int size,
-            @RequestParam(defaultValue = "") String search,
-            @RequestParam(defaultValue = "") String categoria) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("idProducto").descending());
-        return ResponseEntity.ok(productoService.obtenerProductosPaginados(search, categoria, pageable));
     }
 }

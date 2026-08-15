@@ -10,6 +10,13 @@ import com.climatizacion.sistema_clima.repository.CitaRepository;
 import com.climatizacion.sistema_clima.repository.ConversacionRepository;
 import com.climatizacion.sistema_clima.repository.MensajeRepository;
 import com.climatizacion.sistema_clima.repository.UsuarioRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +36,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "Chat", description = "Endpoints para mensajería entre técnicos y clientes")
 public class ChatController {
 
     private static final Logger log = LoggerFactory.getLogger(ChatController.class);
@@ -39,6 +47,7 @@ public class ChatController {
     private final UsuarioRepository usuarioRepository;
     private final CitaRepository citaRepository;
 
+    // ===== WebSocket (NO se documenta en Swagger) =====
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload Map<String, Object> payload, Principal principal) {
         if (principal == null) {
@@ -145,8 +154,21 @@ public class ChatController {
         );
     }
 
+    // ===== REST Endpoints (documentados) =====
+
     @GetMapping("/api/conversaciones/{id}/mensajes")
-    public List<MensajeDTO> obtenerMensajes(@PathVariable Long id, Authentication authentication) {
+    @Operation(summary = "Obtener mensajes de una conversación",
+            description = "Devuelve el historial de mensajes de una conversación específica. Marca los mensajes no leídos como leídos.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista de mensajes",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = MensajeDTO.class))),
+            @ApiResponse(responseCode = "403", description = "No tienes acceso a esta conversación"),
+            @ApiResponse(responseCode = "404", description = "Conversación no encontrada")
+    })
+    public List<MensajeDTO> obtenerMensajes(
+            @Parameter(description = "ID de la conversación", required = true) @PathVariable Long id,
+            Authentication authentication) {
         String email = authentication.getName();
         UsuarioEntity usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -187,6 +209,8 @@ public class ChatController {
     }
 
     @GetMapping("/api/conversaciones")
+    @Operation(summary = "Listar conversaciones del usuario autenticado",
+            description = "Devuelve todas las conversaciones en las que participa el usuario (como cliente o como técnico).")
     public List<ConversacionEntity> listarConversaciones(Authentication authentication) {
         String email = authentication.getName();
         UsuarioEntity usuario = usuarioRepository.findByEmail(email)
@@ -197,7 +221,19 @@ public class ChatController {
     }
 
     @PostMapping("/api/conversaciones/iniciar")
-    public ResponseEntity<ConversacionEntity> iniciarConversacion(@RequestBody Map<String, Long> payload, Authentication authentication) {
+    @Operation(summary = "Iniciar una nueva conversación",
+            description = "Crea una conversación entre un cliente y un técnico para una cita específica. " +
+                    "Si ya existe una conversación para esa cita, la devuelve.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Conversación creada o existente",
+                    content = @Content(schema = @Schema(implementation = ConversacionEntity.class))),
+            @ApiResponse(responseCode = "400", description = "Faltan datos obligatorios (idCliente, idTecnico, idCita)"),
+            @ApiResponse(responseCode = "403", description = "No tienes permiso para crear esta conversación")
+    })
+    public ResponseEntity<ConversacionEntity> iniciarConversacion(
+            @Parameter(description = "Payload con idCliente, idTecnico e idCita", required = true)
+            @RequestBody Map<String, Long> payload,
+            Authentication authentication) {
         String email = authentication.getName();
         UsuarioEntity usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no autenticado"));

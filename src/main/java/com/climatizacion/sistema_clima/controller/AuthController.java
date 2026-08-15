@@ -8,6 +8,13 @@ import com.climatizacion.sistema_clima.repository.UsuarioRepository;
 import com.climatizacion.sistema_clima.security.JwtUtil;
 import com.climatizacion.sistema_clima.service.RefreshTokenService;
 import com.climatizacion.sistema_clima.service.UsuarioService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +28,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Tag(name = "Autenticación", description = "Endpoints para login, registro y recuperación de contraseña")
 public class AuthController {
 
     private final UsuarioService usuarioService;
@@ -30,11 +38,25 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
 
     @PostMapping("/login")
+    @Operation(summary = "Iniciar sesión", description = "Autentica a un usuario y devuelve un token JWT y refresh token.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login exitoso",
+                    content = @Content(schema = @Schema(example = """
+                            {
+                              "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+                              "refreshToken": "550e8400-e29b-41d4-a716-446655440000",
+                              "user": {
+                                "idUsuario": 1,
+                                "email": "cliente@example.com",
+                                "rol": "CLIENTE"
+                              }
+                            }"""))),
+            @ApiResponse(responseCode = "400", description = "Credenciales inválidas o usuario inactivo")
+    })
     public ResponseEntity<?> login(@RequestBody Map<String, String> creds) {
         String email = creds.get("email");
         String password = creds.get("password");
 
-        // ✅ Validación de entrada
         if (email == null || email.trim().isEmpty()) {
             throw new RuntimeException("El correo electrónico es obligatorio");
         }
@@ -69,6 +91,11 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
+    @Operation(summary = "Renovar access token", description = "Usa el refresh token para obtener un nuevo access token.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Nuevo access token generado"),
+            @ApiResponse(responseCode = "400", description = "Refresh token inválido o expirado")
+    })
     public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> request) {
         String refreshToken = request.get("refreshToken");
 
@@ -84,6 +111,7 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
+    @Operation(summary = "Solicitar recuperación de contraseña", description = "Envía un enlace de restablecimiento al correo.")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         usuarioService.enviarLinkRecuperacion(email);
@@ -91,6 +119,7 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
+    @Operation(summary = "Restablecer contraseña", description = "Cambia la contraseña usando el token recibido por correo.")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
         String token = request.get("token");
         String newPassword = request.get("password");
@@ -111,14 +140,19 @@ public class AuthController {
 
     @GetMapping("/generate-hash")
     @PreAuthorize("hasAuthority('ADMIN')")
+    @Operation(summary = "Generar hash BCrypt (solo ADMIN)", description = "Devuelve el hash de una contraseña para pruebas.")
     public ResponseEntity<?> generateHash(@RequestParam String password) {
         String hash = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password);
         return ResponseEntity.ok(Map.of("password", password, "hash", hash));
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Registrar nuevo usuario", description = "Crea una cuenta de cliente (rol por defecto CLIENTE).")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Usuario creado exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos o email/DUI duplicado")
+    })
     public ResponseEntity<?> register(@RequestBody UsuarioDTO usuarioDTO) {
-        // Si no viene rol, forzar CLIENTE
         if (usuarioDTO.getRol() == null) {
             usuarioDTO.setRol(Rol.CLIENTE);
         }
