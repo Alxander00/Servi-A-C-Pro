@@ -146,6 +146,47 @@ public class CitaController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN') or @citaServiceImpl.obtenerPorId(#id).idTecnico == authentication.principal.idUsuario")
+    @Operation(summary = "Eliminar (soft delete) una cita", description = "Cambia el estado de la cita a CANCELADA en lugar de eliminarla físicamente. Solo ADMIN o el técnico asignado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Cita cancelada/eliminada exitosamente"),
+            @ApiResponse(responseCode = "404", description = "Cita no encontrada"),
+            @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
+    public ResponseEntity<Void> eliminarCita(
+            @Parameter(description = "ID de la cita a eliminar", required = true) @PathVariable Long id) {
+        citaService.eliminarCita(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/archivar")
+    @PreAuthorize("hasAuthority('ADMIN') or @citaServiceImpl.obtenerPorId(#id).idTecnico == authentication.principal.idUsuario")
+    public ResponseEntity<Void> archivarCita(@PathVariable Long id) {
+        citaService.archivarCita(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/desarchivar")
+    @PreAuthorize("hasAuthority('ADMIN') or @citaServiceImpl.obtenerPorId(#id).idTecnico == authentication.principal.idUsuario")
+    public ResponseEntity<Void> desarchivarCita(@PathVariable Long id) {
+        citaService.desarchivarCita(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/eliminar-definitivo")
+    @PreAuthorize("hasAuthority('ADMIN') or @citaServiceImpl.obtenerPorId(#id).idTecnico == authentication.principal.idUsuario")
+    public ResponseEntity<Void> eliminarCitaDefinitiva(@PathVariable Long id) {
+        citaService.eliminarCitaDefinitivamente(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/tecnico/{idTecnico}/archivadas")
+    @PreAuthorize("hasAuthority('ADMIN') or #idTecnico == authentication.principal.idUsuario")
+    public ResponseEntity<List<CitaResponseDTO>> listarArchivadas(@PathVariable Long idTecnico) {
+        return ResponseEntity.ok(citaService.listarArchivadasPorTecnico(idTecnico));
+    }
+
     @GetMapping("/cliente/{idCliente}/paginado")
     @PreAuthorize("hasAuthority('ADMIN') or #idCliente == authentication.principal.idUsuario")
     @Operation(summary = "Listar citas por cliente con paginación", description = "Devuelve una página de citas de un cliente específico.")

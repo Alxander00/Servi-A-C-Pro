@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface DetalleCitaRepository extends JpaRepository<DetalleCitaEntity, Long> {
     List<DetalleCitaEntity> findByCita_IdCita(Long idCita);
+    void deleteByCita_IdCita(Long idCita);
 }

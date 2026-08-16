@@ -31,6 +31,10 @@ public interface CitaRepository extends JpaRepository<CitaEntity, Long> {
             List<EstadoCita> estados
     );
 
+    Page<CitaEntity> findByTecnico_IdUsuarioAndArchivadaFalse(Long idTecnico, Pageable pageable);
+
+    List<CitaEntity> findByTecnico_IdUsuarioAndArchivadaTrue(Long idTecnico);
+
     @Query("SELECT c FROM CitaEntity c JOIN FETCH c.cliente JOIN FETCH c.tecnico WHERE c.tecnico.idUsuario = :idTecnico")
     List<CitaEntity> findByTecnico_IdUsuarioWithFetch(@Param("idTecnico") Long idTecnico);
 

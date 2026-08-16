@@ -9,9 +9,7 @@ import com.climatizacion.sistema_clima.enums.EstadoCita;
 import com.climatizacion.sistema_clima.enums.Rol;
 import com.climatizacion.sistema_clima.exceptions.CitaNotFoundException;
 import com.climatizacion.sistema_clima.exceptions.UsuarioNoEncontradoException;
-import com.climatizacion.sistema_clima.repository.CitaRepository;
-import com.climatizacion.sistema_clima.repository.PedidoRepository;
-import com.climatizacion.sistema_clima.repository.UsuarioRepository;
+import com.climatizacion.sistema_clima.repository.*;
 import com.climatizacion.sistema_clima.service.CitaService;
 import com.climatizacion.sistema_clima.service.CloudinaryService;
 import com.climatizacion.sistema_clima.service.ResendEmailService;
@@ -42,6 +40,8 @@ public class CitaServiceImpl implements CitaService {
     private final UsuarioRepository usuarioRepository;
     private final ResendEmailService resendEmailService;
     private final CloudinaryService cloudinaryService;
+    private final DetalleCitaRepository detalleCitaRepository;
+    private final UsoRepuestoRepository usoRepuestoRepository;
 
     /**
      * Obtiene todas las citas (solo ADMIN).
@@ -261,6 +261,64 @@ public class CitaServiceImpl implements CitaService {
         } catch (IOException e) {
             throw new RuntimeException("Error al subir evidencias a Cloudinary: " + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public void eliminarCita(Long id) {
+        CitaEntity cita = citaRepository.findById(id)
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada con ID: " + id));
+        // Soft delete: cambiamos el estado a CANCELADA en lugar de eliminar físicamente
+        cita.setEstado(EstadoCita.CANCELADA);
+        citaRepository.save(cita);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CitaResponseDTO obtenerPorId(Long id) {
+        CitaEntity cita = citaRepository.findById(id)
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada con ID: " + id));
+        return mapToResponseDTO(cita);
+    }
+
+    @Override
+    @Transactional
+    public void archivarCita(Long idCita) {
+        CitaEntity cita = citaRepository.findById(idCita)
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada"));
+        if (cita.getEstado() != EstadoCita.COMPLETADA && cita.getEstado() != EstadoCita.CANCELADA) {
+            throw new RuntimeException("Solo se pueden archivar citas completadas o canceladas");
+        }
+        cita.setArchivada(true);
+        citaRepository.save(cita);
+    }
+
+    @Override
+    @Transactional
+    public void desarchivarCita(Long idCita) {
+        CitaEntity cita = citaRepository.findById(idCita)
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada"));
+        cita.setArchivada(false);
+        citaRepository.save(cita);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CitaResponseDTO> listarArchivadasPorTecnico(Long idTecnico) {
+        return citaRepository.findByTecnico_IdUsuarioAndArchivadaTrue(idTecnico)
+                .stream().map(this::mapToResponseDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void eliminarCitaDefinitivamente(Long idCita) {
+        CitaEntity cita = citaRepository.findById(idCita)
+                .orElseThrow(() -> new CitaNotFoundException("Cita no encontrada"));
+        // Soft delete: la marcamos como eliminada para el técnico (ya no aparecerá en ninguna lista)
+        cita.setArchivada(true); // ya la mantenemos archivada para siempre
+        // Podríamos añadir otro flag, pero con archivar a true y un estado no visible basta
+        // O podríamos cambiar el estado a un nuevo estado "ELIMINADA" si lo deseas.
+        citaRepository.save(cita);
     }
 
     /**

@@ -19,4 +19,10 @@ public interface CitaService {
     List<CitaResponseDTO> obtenerPorCliente(Long idCliente);
     long contarCitasPorClienteYEstados(Long idCliente, List<EstadoCita> estados);
     CitaResponseDTO guardarReporteTecnico(Long idCita, String estado, String notas, List<MultipartFile> fotosAntes, List<MultipartFile> fotosDespues, String firmaBase64);
+    void eliminarCita(Long id);
+    CitaResponseDTO obtenerPorId(Long id);
+    void archivarCita(Long idCita);
+    void desarchivarCita(Long idCita);
+    List<CitaResponseDTO> listarArchivadasPorTecnico(Long idTecnico);
+    void eliminarCitaDefinitivamente(Long idCita); // soft delete para el técnico (ocultar para siempre)
 }

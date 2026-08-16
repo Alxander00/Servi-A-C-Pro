@@ -64,6 +64,9 @@ public class CitaEntity {
     @OneToMany(mappedBy = "cita", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UsoRepuestoEntity> repuestosUtilizados = new ArrayList<>();
 
+    @Column(name = "archivada", nullable = false)
+    private boolean archivada = false;
+
     @PrePersist
     public void prePersist() {
         if (this.estado == null) {
