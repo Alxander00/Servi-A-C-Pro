@@ -36,7 +36,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOrigins(
                         "http://localhost:5500",
                         "http://127.0.0.1:5500",
-                        "https://clinquant-tulumba-124b74.netlify.app"
+                        "https://clinquant-tulumba-124b74.netlify.app",
+                        "https://serviacpro.netlify.app"
                 )
                 .addInterceptors(new HandshakeInterceptor() {
                     @Override
