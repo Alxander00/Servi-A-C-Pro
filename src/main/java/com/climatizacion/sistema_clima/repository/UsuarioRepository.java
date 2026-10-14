@@ -1,6 +1,7 @@
 package com.climatizacion.sistema_clima.repository;
 
 import com.climatizacion.sistema_clima.entities.UsuarioEntity;
+import com.climatizacion.sistema_clima.enums.Rol;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,4 +28,6 @@ public interface UsuarioRepository extends JpaRepository<UsuarioEntity, Long> {
             "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:rol IS NULL OR :rol = '' OR CAST(u.rol AS string) = :rol)")
     Page<UsuarioEntity> buscarConFiltros(@Param("search") String search, @Param("rol") String rol, Pageable pageable);
+
+    long countByRol(Rol rol);
 }
